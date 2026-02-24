@@ -16,23 +16,27 @@ def create_masked_labels(example, tokenizer):
         {"role": "assistant", "content": example["completion"]},
     ]
     
-    # 2. Токенизируем полную последовательность
-    # apply_chat_template with return_tensors="pt" returns a tensor directly, not a dict
-    full_input_ids = tokenizer.apply_chat_template(
-        messages, 
-        tokenize=True, 
+    # 2. Получаем текст через apply_chat_template (без токенизации)
+    full_text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=False,
+    )
+
+    # Токенизируем с паддингом отдельно
+    pad_id = tokenizer.pad_token_id
+    encoded = tokenizer(
+        full_text,
         max_length=MAX_SEQ_LENGTH,
         truncation=True,
         padding="max_length",
-        return_tensors="pt"
+        return_tensors="pt",
     )
-    
-    # Remove batch dimension: (1, L) -> (L)
-    input_ids = full_input_ids.squeeze(0)
-    
+    input_ids = encoded["input_ids"].squeeze(0)
+
     # Create attention mask (all non-padded tokens)
-    attention_mask = (input_ids != tokenizer.pad_token_id).long()
-    
+    attention_mask = encoded["attention_mask"].squeeze(0)
+
     # Initialize labels as copy of input_ids
     labels = input_ids.clone()
 
@@ -61,7 +65,7 @@ def create_masked_labels(example, tokenizer):
         labels[:prompt_len] = -100
         
     # Обрабатываем padding токены (если есть), устанавливая их в -100
-    labels[labels == tokenizer.pad_token_id] = -100
+    labels[labels == pad_id] = -100
     
     return {
         "input_ids": input_ids,

@@ -190,6 +190,11 @@ class ModelService:
             elif "qwen" in self.current_model_key.lower():
                 # Add <|im_end|> and <|endoftext|> for Qwen
                 stop_token_ids.extend([151645, 151643])
+            elif "gemma" in self.current_model_key.lower():
+                # Add <end_of_turn> token for Gemma
+                eot_id = self.tokenizer.convert_tokens_to_ids("<end_of_turn>")
+                if eot_id is not None and eot_id != self.tokenizer.unk_token_id:
+                    stop_token_ids.append(eot_id)
             
             # Generate
             with torch.no_grad():
@@ -211,7 +216,7 @@ class ModelService:
             response = self.tokenizer.decode(new_tokens, skip_special_tokens=False)
             
             # Clean up special tokens
-            response = response.replace("<|end|>", "").replace("<|endoftext|>", "").replace("<|im_end|>", "").strip()
+            response = response.replace("<|end|>", "").replace("<|endoftext|>", "").replace("<|im_end|>", "").replace("<end_of_turn>", "").replace("<eos>", "").strip()
             
             # Convert markdown headers (### Header) to HTML bold with line break
             # Using <b> because h3 might be too big inside a chat bubble
