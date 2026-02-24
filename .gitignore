@@ -1,0 +1,28 @@
+# Environments
+venv_phi4/
+venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model checkpoints and weights
+checkpoint-*/
+*.safetensors
+*.pt
+*.pth
+*.bin
+final_adapter/
+qwen2.5_3b_energy_finetune/
+
+# Logs
+*.log
+startup_logs.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db
