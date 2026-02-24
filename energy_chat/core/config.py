@@ -39,7 +39,7 @@ class Settings:
             "qwen-2.5": {
                 "name": "Qwen 2.5 3B (Energy)",
                 "model_id": "Qwen/Qwen2.5-3B-Instruct",
-                "adapter_path": os.path.join(workspace_root, "qwen 2.5 3b", "qwen2.5_3b_energy_finetune", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "qwen 2.5 3b", "final_adapter")
             },
             "gemma-3": {
                 "name": "Gemma 3 4B (Energy)",
