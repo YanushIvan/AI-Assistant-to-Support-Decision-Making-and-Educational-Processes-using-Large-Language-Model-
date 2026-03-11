@@ -165,10 +165,16 @@ class ModelService:
         
         try:
             # Tokenize
-            input_ids = self.tokenizer.apply_chat_template(
-                messages,
+            is_qwen3 = "qwen-3" in self.current_model_key.lower()
+            template_kwargs = dict(
                 tokenize=False,
                 add_generation_prompt=True,
+            )
+            if is_qwen3:
+                template_kwargs["enable_thinking"] = False
+            input_ids = self.tokenizer.apply_chat_template(
+                messages,
+                **template_kwargs,
             )
             
             tokenized = self.tokenizer(
@@ -217,6 +223,9 @@ class ModelService:
             
             # Clean up special tokens
             response = response.replace("<|end|>", "").replace("<|endoftext|>", "").replace("<|im_end|>", "").replace("<end_of_turn>", "").replace("<eos>", "").strip()
+
+            # Remove Qwen3 thinking blocks if present
+            response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
             
             # Convert markdown headers (### Header) to HTML bold with line break
             # Using <b> because h3 might be too big inside a chat bubble

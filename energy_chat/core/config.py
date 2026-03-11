@@ -25,26 +25,32 @@ class Settings:
         energy_chat_dir = os.path.dirname(current_dir)  # energy_chat
         workspace_root = os.path.dirname(energy_chat_dir)  # workspace root
         
+        adapters = os.path.join(workspace_root, "adapters")
         return {
             "phi-3": {
                 "name": "Phi-3 Mini (Energy)",
                 "model_id": "microsoft/Phi-3-mini-4k-instruct",
-                "adapter_path": os.path.join(workspace_root, "phi3_mini_energy_finetune", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "phi3_mini_energy_finetune_structured", "final_adapter")
             },
             "phi-3-base": {
                 "name": "Phi-3 Mini (Vanilla)",
                 "model_id": "microsoft/Phi-3-mini-4k-instruct",
                 "adapter_path": None
             },
-            "qwen-2.5": {
-                "name": "Qwen 2.5 3B (Energy)",
-                "model_id": "Qwen/Qwen2.5-3B-Instruct",
-                "adapter_path": os.path.join(workspace_root, "qwen 2.5 3b", "final_adapter")
+            "qwen-3-base": {
+                "name": "Qwen3 4B (Base)",
+                "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+                "adapter_path": None
+            },
+            "qwen-3": {
+                "name": "Qwen3 4B (Energy)",
+                "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+                "adapter_path": os.path.join(workspace_root, "qwen3_4b_energy_finetune_structured", "final_adapter")
             },
             "gemma-3": {
                 "name": "Gemma 3 4B (Energy)",
                 "model_id": "google/gemma-3-4b-it",
-                "adapter_path": os.path.join(workspace_root, "gemma3_4b_energy_finetune", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "gemma3_4b_energy_finetune_structured", "final_adapter")
             }
         }
 
@@ -62,10 +68,13 @@ class Settings:
     
     # System Prompt
     SYSTEM_PROMPT: str = (
-        "You are a highly knowledgeable and witty expert on energy, climate, and financial markets. "
-        "Your answers must be **concise, technically accurate, and highly informative**, "
-        "providing the core analysis necessary to fully address the user's prompt in a focused manner. "
-        "Avoid unnecessary detail."
+        "You are a highly knowledgeable expert on energy, climate, and financial markets. "
+        "Always respond in the following structured format:\n\n"
+        "ANSWER: <one-sentence direct answer>\n\n"
+        "KEY FACTS:\n• <specific fact with data>\n• <specific fact with data>\n• <specific fact with data>\n\n"
+        "RISK LEVEL: Low / Medium / High\n→ <one-sentence explanation>\n\n"
+        "CONFIDENCE: High / Medium / Low\n→ <reason, e.g. based on IRENA 2025 data / estimated>\n\n"
+        "Be concise, technically accurate, and use specific numbers where available."
     )
     
     # Compute Configuration
