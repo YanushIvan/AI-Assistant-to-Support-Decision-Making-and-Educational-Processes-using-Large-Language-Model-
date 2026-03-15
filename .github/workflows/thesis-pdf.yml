@@ -1,0 +1,37 @@
+name: Build Thesis PDF
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "thesis.in.latex/**"
+      - ".github/workflows/thesis-pdf.yml"
+  pull_request:
+    paths:
+      - "thesis.in.latex/**"
+      - ".github/workflows/thesis-pdf.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build thesis PDFs with TUKE Docker image
+        run: |
+          cd thesis.in.latex
+          chmod +x mkthesis.sh
+          ./mkthesis.sh clean pdf
+
+      - name: Upload thesis PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: thesis-pdf
+          path: |
+            thesis.in.latex/dist/thesis.pdf
+            thesis.in.latex/dist/thesis-printable.pdf
+          if-no-files-found: error
