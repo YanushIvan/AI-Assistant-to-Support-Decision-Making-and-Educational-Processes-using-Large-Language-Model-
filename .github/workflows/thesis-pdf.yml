@@ -23,9 +23,11 @@ jobs:
 
       - name: Build thesis PDFs with TUKE Docker image
         run: |
-          cd thesis.in.latex
-          chmod +x mkthesis.sh
-          ./mkthesis.sh clean pdf
+          docker container run --rm \
+            --user "$(id --user):$(id --group)" \
+            --volume "$PWD/thesis.in.latex:/thesis" \
+            kpituke/latex:2025.09.4 \
+            make clean pdf
 
       - name: Upload thesis PDFs
         uses: actions/upload-artifact@v4
