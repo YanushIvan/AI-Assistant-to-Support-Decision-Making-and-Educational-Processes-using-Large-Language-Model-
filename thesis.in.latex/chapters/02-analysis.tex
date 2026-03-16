@@ -1,0 +1,91 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Analýza technológií a existujúcich prístupov}\label{ch:analysis}
+
+Táto kapitola poskytuje prehľad technológií a metód, na ktorých práca stojí. Najprv je opísaná architektúra jazykových modelov a ich prechod k menším variantom. Následne sú charakterizované konkrétne modely zvolené pre doménovú adaptáciu a techniky ich efektívneho doučenia. Záver kapitoly zhŕňa súvisiace práce, ktoré riešili podobnú problematiku.
+
+
+\section{Transformerová architektúra a jazykové modely}
+
+Moderné veľké jazykové modely (LLM, z angl. \emph{Large Language Model}) sú postavené na architektúre \emph{transformer}, ktorú predstavili Vaswani a kol.~\cite{Vaswani2017Attention}. Kľúčovým mechanizmom je \emph{self-attention}: každý token vstupnej sekvencie môže priamo interagovať s každým iným tokenom, čím model zachytáva dlhodobé závislosti bez potreby rekurencie. Paralelizovateľnosť tohto mechanizmu umožnila trénovanie modelov s miliardami parametrov na zostavách grafických kariet.
+
+Prehľad vývoja a schopností súčasných LLM poskytuje Zhao a kol.~\cite{Zhao2023SurveyLLM}. Napriek výnimočným schopnostiam najväčších modelov sú ich hardvérové nároky počas trénovania aj inferencie mimo dosahu väčšiny organizácií. To viedlo k rozvoju tzv.\ \emph{malých jazykových modelov} (SLM, z angl.\ \emph{Small Language Model}).
+
+
+\section{Malé jazykové modely}
+
+Za malé jazykové modely sa spravidla považujú modely s počtom parametrov do 7 miliárd. Tieto modely je možné prevádzkovať na bežnom spotrebiteľskom hardvéri -- GPU s 8--16~GB VRAM -- alebo pri kvantovacej kompresii dokonca len na CPU.
+
+Malé modely prirodzene dosahujú nižší výkon ako väčšie varianty na všeobecných benchmarkoch. Avšak po doménovej adaptácii môžu v úzko špecifickej oblasti výrazne prekonať väčšie neadaptované modely~\cite{Gururangan2020DontStop}. Pre ciele tejto práce je práve to kľúčové: model špecializovaný na oblasť energetiky môže byť v tejto oblasti prakticky použiteľnejší ako oveľa väčší všeobecný model.
+
+
+\section{Vybrané modely}
+
+Pre doménovú adaptáciu boli zvolené tri malé jazykové modely s verejne dostupnými váhami. Kritériami výberu boli: počet parametrov do 5 miliárd, dostupnosť inštrukčnej verzie (chat/instruct variant), licenčné podmienky umožňujúce výskumné použitie a architektonická rôznorodosť umožňujúca zmysluplné porovnanie.
+
+\subsection{Microsoft Phi-3 Mini}
+
+Phi-3 Mini je model s 3,8 miliardami parametrov vyvinutý spoločnosťou Microsoft~\cite{Phi3TechReport}. Na rozdiel od väčšiny konkurentov bol trénovaný s dôrazom na kvalitu tréningových dát, nie na ich objem -- konkrétne na syntetických datasetoch a starostlivo filtrovaných webových textoch. Verzia \texttt{Phi-3-mini-4k-instruct} podporuje kontext 4096 tokenov a je dotrénovaná na inštrukčných dátach, čo ju predurčuje na konverzačné použitie. Napriek kompaktnej veľkosti dosahuje Phi-3 Mini na mnohých benchmarkoch výsledky porovnateľné s podstatne väčšími modelmi.
+
+\subsection{Google Gemma 3 4B}
+
+Gemma 3 je rodina modelov od Google DeepMind~\cite{Gemma3TechReport}. Verzia s 4 miliardami parametrov (\texttt{gemma-3-4b-it}) disponuje vylepšenou architektúrou oproti predchádzajúcej generácii, vrátane striedania lokálnych a globálnych attention vrstiev pre efektívnejšie spracovanie dlhých kontextov. Model podporuje multimodálny vstup (obrázky + text), pričom v tejto práci je využívaný výhradne pre textové úlohy. Gemma 3 4B preukazuje silné výsledky pri sledovaní inštrukcií a faktickej presnosti v európskom jazykovom prostredí.
+
+\subsection{Alibaba Qwen3 4B}
+
+Qwen3 4B je súčasťou najnovšej generácie modelov od Alibaba Group~\cite{Qwen3TechReport}. Zaujímavou vlastnosťou tejto rodiny je podpora tzv.\ \emph{thinking mode} -- schopnosť modelu pred finálnou odpoveďou explicitne odôvodniť svoje uvažovanie v osobitnom myšlienkovom bloku. Verzia s 4 miliardami parametrov vykazuje konkurencieschopný výkon pri analytických a faktografických úlohách pri relatívne nízkych nárokoch na pamäť.
+
+
+\section{Techniky doučenia}
+
+\subsection{Plné doučenie}
+
+Plné doučenie (angl.\ \emph{full fine-tuning}) aktualizuje všetky parametre modelu počas trénovania na doménovom datasete. Hoci táto metóda dosahuje najvyššiu mieru adaptácie na cieľovú doménu, jej výpočtové nároky sú porovnateľné s nároky pôvodného predtrénovania -- teda desiatky GPU s veľkými pamäťami. Pre modely rádovo miliárd parametrov je plné doučenie pri obmedzených zdrojoch nerealizovateľné.
+
+\subsection{Parameter-efektívne doučenie (PEFT)}
+
+Parameter-efektívne doučenie (PEFT, z angl.\ \emph{Parameter-Efficient Fine-Tuning}) predstavuje skupinu metód, ktoré mrazené pôvodné váhy modelu a trénujú len malý počet nových parametrov. Výsledkom je výrazné zníženie pamäťových a výpočtových nárokov pri zachovaní podstatnej časti adaptačného efektu.
+
+\subsection{LoRA}
+
+LoRA (Low-Rank Adaptation) je v súčasnosti najrozšírenejšou PEFT metódou~\cite{Hu2021LoRA}. Myšlienka vychádza z predpokladu, že zmena váhovej matice $\Delta W$ pri doučení má nízku intrinsickú hodnosť a je preto možné ju aproximovať súčinom dvoch nízkohranných matíc $A$ a $B$:
+
+\begin{equation}
+    \Delta W = A \cdot B, \quad A \in \mathbb{R}^{d \times r},\; B \in \mathbb{R}^{r \times k},\; r \ll \min(d, k)
+\end{equation}
+
+Pôvodné váhy $W$ zostávajú zmrazené; trénujú sa iba matice $A$ a $B$. Parameter $r$ (rank) určuje kapacitu adaptéra -- vyšší rank znamená viac trénovateľných parametrov a silnejšiu adaptáciu za cenu vyšších nárokov. V tejto práci boli použité hodnoty $r \in \{16, 64\}$ v závislosti od modelu. LoRA adaptéry je po vytvorení možné zlúčiť s pôvodným modelom, čím nevzniká žiadna réžia počas inferencie.
+
+\subsection{QLoRA}
+
+QLoRA (Quantized LoRA) rozširuje LoRA o 4-bitové kvantovania bázy modelu~\cite{Dettmers2023QLoRA}. Predtrénované váhy sú načítané vo formáte NF4 (NormalFloat4) namiesto štandardných 16 alebo 32 bitov, čím sa veľkosť modelu v pamäti znižuje až štvornásobne. LoRA adaptéry sú napriek tomu trénované v plnej presnosti (bfloat16). Dettmers a kol.\ preukázali, že model doučený touto metódou dosahuje výkon porovnateľný s plným doučením pri zlomku výpočtových nárokov. Práve QLoRA bola použitá pre všetky tri modely v tejto práci.
+
+\subsection{Inštrukčné doučenie (SFT)}
+
+Predtrénované modely generujú text pokračovaním vstupnej sekvencie -- nie sú priamo nastavené na sledovanie inštrukcií vo formáte otázka--odpoveď. Inštrukčné doučenie (SFT, z angl.\ \emph{Supervised Fine-Tuning}) adaptuje model na tento formát pomocou označených príkladov~\cite{Ouyang2022InstructGPT}. Pri trénovaní sú tokeny systémovej správy a otázky maskované -- strata (\emph{loss}) sa počíta iba z predikcie tokenov odpovede asistenta. Model sa teda učí výhradne generovať relevantné odpovede, nie reprodukovať vstupný kontext. V tejto práci bola SFT realizovaná pomocou triedy \texttt{SFTTrainer} z knižnice TRL.
+
+
+\section{Použité knižnice a nástroje}
+
+\begin{description}
+    \item[Hugging Face Transformers] Hlavná knižnica pre prácu s predtrénovanými modelmi. Poskytuje triedy \texttt{AutoModelForCausalLM} a \texttt{AutoTokenizer} pre jednotné načítanie modelov rôznych architektúr, ako aj \texttt{BitsAndBytesConfig} pre konfiguráciu kvantovania. Verzie použité v práci: 4.57.1 -- 5.2.0.
+
+    \item[PEFT] Knižnica od Hugging Face implementujúca metódy parameter-efektívneho doučenia. Použité komponenty: \texttt{LoraConfig}, \texttt{get\_peft\_model} a \texttt{prepare\_model\_for\_kbit\_training}. Verzia: 0.18.x.
+
+    \item[TRL (Transformer Reinforcement Learning)] Knižnica pre doučenie jazykových modelov. Použité súčasti: \texttt{SFTTrainer} pre inštrukčné doučenie a \texttt{DPOTrainer} pre optimalizáciu pomocou Direct Preference Optimization (DPO). Verzie: 0.25.1 -- 0.28.0.
+
+    \item[BitsAndBytes] Knižnica realizujúca 4-bitové a 8-bitové kvantovania na GPU. Je kľúčovým predpokladom metódy QLoRA -- umožňuje načítanie veľkých modelov pri výrazne znížených požiadavkách na VRAM.
+
+    \item[Datasets] Knižnica od Hugging Face pre načítanie, spracovanie a iterovanie datasetov. Bola použitá na načítanie JSONL súborov s energetickými dátami a ich formátovanie do inštrukčného formátu systém -- používateľ -- asistent. Verzie: 4.2.0 -- 4.5.0.
+
+    \item[FastAPI + Uvicorn] Framework pre vytvorenie REST API, prostredníctvom ktorého komunikuje klientské rozhranie s modelom. Uvicorn slúži ako asynchrónny ASGI server. Verzie: FastAPI 0.85.1, Uvicorn 0.35.0.
+\end{description}
+
+
+\section{Súvisiace práce}
+
+Problematika doménovej adaptácie jazykových modelov je aktívnou výskumnou oblasťou. Gururangan a kol.~\cite{Gururangan2020DontStop} preukázali, že ďalšie predtrénovanie na doménovom texte (DAPT -- Domain-Adaptive Pretraining) pred samotným doučením prináša konzistentné zlepšenie výkonu na doménových úlohách, a to naprieč rôznymi oblasťami -- od biomedicíny po počítačové vedy. Ich záver je relevantný pre túto prácu: doménovo špecifické dáta majú merateľný vplyv na správanie modelu bez ohľadu na architektúru.
+
+Podobný princíp doménovej špecializácie bol aplikovaný v biomedicínskej oblasti modelom BioBERT~\cite{Lee2020BioBERT}. Lee a kol.\ doučili model BERT výhradne na biomedicínskych textoch a dosiahli výrazné zlepšenie oproti všeobecnému BERT pri úlohách extrakcie informácií a odpovedania na otázky v lekárskej doméne. Hoci ide o inú architektúru aj doménu, princíp -- adaptácia všeobecného modelu na špecifickú oblasť pomocou doménových dát -- je totožný s prístupom tejto práce.
+
+Z metodologického hľadiska nasleduje práca prístup inštrukčného doučenia popísaný v InstructGPT~\cite{Ouyang2022InstructGPT}: modely sú doučené na dvojiciach inštrukcia--odpoveď s maskovaním vstupných tokenov, čím sa cielene trénuje schopnosť sledovať pokyny. Metóda QLoRA~\cite{Dettmers2023QLoRA} navyše umožňuje realizovať toto doučenie pri zlomku bežných výpočtových nárokov, čo ju robí kľúčovou pre scenáre s obmedzeným hardvérom, akým je aj táto práca.

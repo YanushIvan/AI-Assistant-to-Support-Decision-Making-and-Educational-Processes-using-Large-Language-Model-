@@ -15,16 +15,17 @@ Motiváciou práce je preto overiť, či je možné pomocou relatívne malých v
 
 \section{Formulácia úlohy}
 
-Úlohou práce je navrhnúť a implementovať AI asistenta zameraného na oblasť energetiky v Európe, ktorý bude využívať doučené malé jazykové modely a bude schopný poskytovať rýchle, vecné a použiteľné odpovede pre potreby vzdelávania aj podpory rozhodovania. Riešenie má byť realizované tak, aby bolo použiteľné aj pri obmedzených výpočtových zdrojoch.
+Úlohou práce je navrhnúť a implementovať konverzačného AI asistenta pre oblasť energetiky v Európe s využitím malých doučených jazykových modelov. Na rozdiel od veľkých všeobecných modelov, riešenie musí byť funkčné aj v prostredí s obmedzenými výpočtovými zdrojmi, čo kladie nároky na výber a adaptáciu vhodných modelov.
 
 Na splnenie tejto úlohy sú stanovené tieto čiastkové ciele:
 
 \begin{itemize}
-	\item pripraviť a spracovať doménovo orientovaný dataset z energetických dát,
-	\item doučiť vybrané malé jazykové modely na pripravených dátach,
-	\item navrhnúť jednotný spôsob inferencie a používateľskej interakcie vo forme konverzačného asistenta,
-	\item porovnať vybrané modely z pohľadu kvality odpovedí, konzistentnosti a praktickej využiteľnosti,
-	\item vyhodnotiť, či doménová adaptácia malých modelov prináša merateľný prínos pre rýchle získanie informácií a podporu rozhodovania.
+	\item pripraviť a spracovať doménovo orientovaný dataset z energetických zdrojov vhodný pre inštrukčné doučenie,
+	\item vybrať a porovnať malé jazykové modely podľa kritérií ako veľkosť, architektúra a dostupnosť -- s cieľom identifikovať kandidátov vhodných na doménovú adaptáciu,
+	\item doučiť vybrané modely na pripravených dátach a zdokumentovať potrebné výpočtové nároky (čas, pamäť, hardvér),
+	\item navrhnúť jednotný spôsob inferencie vo forme konverzačného asistenta,
+	\item vyhodnotiť schopnosti doučených modelov z pohľadu presnosti, konzistentnosti a praktickej použiteľnosti v doméne energetiky,
+	\item posúdiť, do akej miery sú malé modely schopné nahradiť všeobecné modely pri riešení doménovo špecifických úloh pri obmedzených zdrojoch.
 \end{itemize}
 
-Výsledkom práce má byť funkčný prototyp asistenta a analytické zhodnotenie vhodnosti malých jazykových modelov pre úzko špecializovanú doménu energetiky.
+Výsledkom práce má byť funkčný prototyp asistenta, experimentálne porovnanie vybraných modelov a analýza výpočtových nárokov spojených s ich doučením a nasadením.
