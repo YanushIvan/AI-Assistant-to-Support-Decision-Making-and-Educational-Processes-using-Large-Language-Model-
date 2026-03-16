@@ -8,10 +8,23 @@ V úvode neuvádzajte štruktúru práce, t.j. o čom je ktorá kapitola. Rozsah
 
 \section{Motivácia}
 
-Motivácia vychádza z opisu nedostatkov a predpokladaných prínosov riešenia stanoveného problému, t.j. čo dnes nefunguje tak, ako by mohlo a ako predpokladám, že sa to mojim riešením zlepší.
-Motivácia nesmie byť, že ste to dostali ako zadanie, alebo že ste sa chceli zapojiť do súťaže resp., že je to zaujímavá téma.
+V oblasti energetiky v Európe vzniká veľké množstvo odborných informácií, no ich praktické využitie je často pomalé a náročné na orientáciu. Pri riešení konkrétnej otázky musí používateľ prechádzať viacero zdrojov, porovnávať údaje a ručne vytvárať závery, čo predlžuje rozhodovanie a zvyšuje riziko nepresnej interpretácie. Tento problém je výrazný najmä v situáciách, keď je potrebné reagovať rýchlo a s obmedzenými personálnymi alebo technickými kapacitami.
+
+Motiváciou práce je preto overiť, či je možné pomocou relatívne malých výpočtových zdrojov doučiť malé jazykové modely na úzko špecializovaných energetických dátach tak, aby poskytovali rýchle, vecné a prakticky použiteľné odpovede. Súčasne je dôležité porovnať viacero malých modelov a posúdiť, či ich doménová adaptácia prináša reálny prínos pre podporu rozhodovania. Výsledok má ukázať, či menšie modely môžu predstavovať efektívnu alternatívu k veľkým všeobecným modelom tam, kde je rozhodujúca dostupnosť, rýchlosť a prevádzková nenáročnosť.
 
 
 \section{Formulácia úlohy}
 
-V rámci úvodu tiež vysvetlite vaše chápanie úlohy, ktorú budete riešiť. Prvú verziu tejto časti by ste mali napísať čo najskôr, aby ste sa uistili, že rozumiete, čo je cieľom vašej práce, a prekonzultovali ju so školiteľom. Neskôr v priebehu práce na projekte ju môžete spresňovať a dopĺňať.
+Úlohou práce je navrhnúť a implementovať AI asistenta zameraného na oblasť energetiky v Európe, ktorý bude využívať doučené malé jazykové modely a bude schopný poskytovať rýchle, vecné a použiteľné odpovede pre potreby vzdelávania aj podpory rozhodovania. Riešenie má byť realizované tak, aby bolo použiteľné aj pri obmedzených výpočtových zdrojoch.
+
+Na splnenie tejto úlohy sú stanovené tieto čiastkové ciele:
+
+\begin{itemize}
+	\item pripraviť a spracovať doménovo orientovaný dataset z energetických dát,
+	\item doučiť vybrané malé jazykové modely na pripravených dátach,
+	\item navrhnúť jednotný spôsob inferencie a používateľskej interakcie vo forme konverzačného asistenta,
+	\item porovnať vybrané modely z pohľadu kvality odpovedí, konzistentnosti a praktickej využiteľnosti,
+	\item vyhodnotiť, či doménová adaptácia malých modelov prináša merateľný prínos pre rýchle získanie informácií a podporu rozhodovania.
+\end{itemize}
+
+Výsledkom práce má byť funkčný prototyp asistenta a analytické zhodnotenie vhodnosti malých jazykových modelov pre úzko špecializovanú doménu energetiky.
