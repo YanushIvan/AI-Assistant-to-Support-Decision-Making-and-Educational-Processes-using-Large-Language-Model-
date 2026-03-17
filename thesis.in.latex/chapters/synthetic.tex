@@ -1,0 +1,210 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Syntetická časť}\label{ch:synthetic}
+
+Syntetická časť opisuje kompletnú metodológiu implementácie doménnovo špecializovaného asistenta energetického sektoru. Riešenie bolo vyvinuté v~iteratívnom procese, ktorý začal výberom základného modelu (\emph{Phi-3}) a postupne sa rozšíril na porovnanie viacerých malých jazykových modelov (SLMs). Táto časť opisuje dátový súbor, proces jemného ladenia a metriky vyhodnotenia.
+
+
+\section{Metodológia a priebeh vývoja}
+
+Vývoj asistenta bol rozdelený do troch hlavných fáz:
+\begin{enumerate}
+    \item \textbf{Prototypovacia fáza}: Implementácia asistenta s~modelom Phi-3 s~cieľom validovať koncept doménovo špecializovaného fine-tuningu.
+    \item \textbf{Rozšírenie modálov}: Replikácia pipeline na ďalšie malé modely (Gemma-3, Qwen-3) s~cieľom porovnať efektívnosť jednotlivých architektúr.
+    \item \textbf{Preprechod na štruktúrovaný formát}: Zmena z~voľného textového formátu na štruktúrovaný formát s~explícitnou analýzou rizika a úrovňou dôvery.
+\end{enumerate}
+
+Kľúčovým rozhodnutím bolo zvoliť \textbf{LoRA (Low-Rank Adaptation)} s~4-bitovým kvantovaním \textbf{QLoRA} ako metódu fine-tuningu. Tento prístup umožňuje adaptovať veľké modely na špecifickú doménu bez potreby úplného pretrenovania a s~minimálnym zaťažením pamäte GPU. Výber tejto metódy bol odôvodnený nákladmi na výpočet a zmesieľosťou na zariadeniach s~obmedzeným výpočtovým výkonom.
+
+
+\section{Konštrukcia a zdroje trénovacích dát}\label{sec:dataset}
+
+\subsection{Štruktúra dátového súboru}
+
+Dátový súbor \texttt{energy\_data\_structured.jsonl} obsahuje 1159 párov otázka-odpoveď špecifických pre energetický sektor. Každá položka je uložená v~nasledujúcom formáte JSON Lines:
+
+\begin{lstlisting}[language=json, caption=Príklad položky z~trénovacieho dátového súboru]
+{
+  "prompt": "What is the current overall global share of women in **full-time employment** in the renewable energy sector, according to the IRENA 2025 report?",
+  "completion": "ANSWER: The share of women in full-time jobs in the renewable energy sector is 32%.\n\nKEY FACTS:\n• The share of women in full-time jobs in the renewable energy sector is 32%\n• This percentage is higher than in the oil and gas sector (23%)\n\nRISK LEVEL: Medium\n→ Moderate uncertainty; depends on policy or market conditions.\n\nCONFIDENCE: Medium\n→ General expert knowledge; exact figures may vary."
+}
+\end{lstlisting}
+
+Dátový súbor bol vytvorený s~názvom štruktúrovaný formát odpovede, ktorý obsahuje:
+\begin{itemize}
+    \item \textbf{ANSWER}: Sumarizovaná odpoveď na otázku.
+    \item \textbf{KEY FACTS}: Zoznam kľúčových faktov s~konkrétnymi údajmi a štatistikami.
+    \item \textbf{RISK LEVEL}: Kategorizácia úrovne rizika (nízka/stredná/vysoká) s~krátkou výkladom.
+    \item \textbf{CONFIDENCE}: Úroveň dôvery v~odpoveď (vysoká/stredná/nízka) s~odôvodnením.
+\end{itemize}
+
+Táto štruktúra bola zvolená preto, aby sa modelu jednoduchej podalo vytvoriť konzistentné, overiť a s~jasným vyjadrením neistoty.
+
+\subsection{Primárne zdroje dát}
+
+Trénovací dátový súbor bol zostrojený z~nasledujúcich zdrojov:
+
+\begin{itemize}
+    \item \textbf{IRENA (International Renewable Energy Agency)}: Správy z~rokov 2023--2025 venované podele žien v~energetike, technológiám OZE a trendoch zamestnanosti v~odbornom sektore \cite{IRENA2025}.
+
+    \item \textbf{arXiv}: Vedecké články z~oblastí machine learning na energetických sietí, prognózovanie spotreby energie a analýza trhu energetických komodít \cite{arXiv_energy}.
+
+    \item \textbf{Oficiálne weby organizácií}: Údaje z~webov agentúr ako IEA (International Energy Agency), DENA (Deutsche Energie-Agentur) a miestnych operátorov distribučných sietí.
+
+    \item \textbf{Otvoreného prístupu databázy}: Dáta z~Eurostatu, World Economic Forum a ďalších voľne dostupných zdrojov pokrývajúcich energetickú tranzíciu a analýzu pracovného trhu.
+\end{itemize}
+
+Dáta boli manuálne vyberané a kuráťované s~cieľom zabezpečiť relevancia, faktickú presnosť a pokrytie viacerých podskupín energetického sektoru (OZE, jadrovú energiu, fosilné zdroje, energetickú infraštruktúru).
+
+
+\section{Metóda jemného ladenia: QLoRA}\label{sec:qlora}
+
+\subsection{Princíp QLoRA}
+
+QLoRA \cite{Dettmers2023QLoRA} je technológia jemného ladenia, ktorá kombinuje:
+\begin{itemize}
+    \item \textbf{4-bitové kvantovanie (NF4)}: Redukcia presnosti váh modelu z~16-bitov na 4-bity, čím sa podstatne zníži spotreb pamäte.
+    \item \textbf{Low-Rank Adaptation (LoRA)}: Trénovanie iba malých trainable adaptérov (s~nízkou hodnosťou -- low-rank) namiesto všetkých váh modelu.
+\end{itemize}
+
+Kombinácia týchto techník umožňuje adaptovať modely so stovkami miliárd parametrov na spotrebiteľských GPU (napr. RTX 3090, RTX 4090) s~VRAM $\leq$ 24 GB, čo by inak vyžadovalo profesionálny hardware (A100, H100).
+
+\subsection{Implementačné detaily}
+
+Jemné ladenie bolo implementované nasledovne:
+
+\begin{itemize}
+    \item \textbf{Kvantovacia konfigurácia}:
+    \begin{lstlisting}[language=python, basicstyle=\small]
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float16,
+)
+    \end{lstlisting}
+
+    \item \textbf{LoRA konfigurácia}: Trénovateľné adaptéry s~nízkou hodnosťou ($r = 8$ až $16$), vložené do \textit{query} a \textit{value} vrstiev modelu.
+
+    \item \textbf{Hyperparametre}:
+    \begin{itemize}
+        \item Veľkosť batch: 4-8 (v~závislosti od dostupnej pamäte)
+        \item Rýchlosť učenia: $1e{-4}$ až $5e{-4}$
+        \item Počet epochs: 3-5
+        \item Warmup kroky: 10\% trénovacích krokov
+    \end{itemize}
+\end{itemize}
+
+Iteračný porovnanie viacerých batímatických veľkostí a parametrov LoRA-rádu ukázalo, že $r = 16$ s~batch veľkosťou 8 poskytlo optimálny kompromis medzi kvalitou adaptácie a dobou trvania trénovania.
+
+
+\section{Výber trénovacích modelov a evolúcia prístupu}
+
+\subsection{Prvotný prístup: Len Phi-3}
+
+Iniciálna implementácia sa zakladala výhradne na modeli \textbf{Phi-3 Mini 4K} od Microsoftu. Výber bol obmedzený z~dôvodov:
+\begin{itemize}
+    \item Relatívne malá veľkosť ($\approx 3.8B$ parametrov) vhodná pre GPU s~24 GB pamäte.
+    \item Vysoká kvalita výstupu a inštruktážna úroveň trénovania (instruct model).
+    \item Dostupnosť dokumentácie a komunity okolo modelov Phi.
+\end{itemize}
+
+Počiatočné výsledky ukazovali, že jemné ladenie na energetických dátach zvyšuje relevancia odpovědí. Avšak vznik otázka: \emph{Je Phi-3 najlepšou voľbou pre túto doménu?}
+
+
+\subsection{Rozšírenie na viacero modelov}
+
+Upozornilo sa, že na sile modelov (ako GPT-4, Llama 3.1 8B) je efekt jemného ladenie podstatne slabší -- modely sú už dostatočne všeobecne vzdelaní a adaptácia sa prejavuje málo. Hypotéza bola, že \textbf{malé modely SLM} budú viacerom podatliví voči doménovému fine-tuningu a budú viacerým reprezentatívne ako porovnávacia skupina.
+
+Preto boli do experimentu pridané:
+\begin{enumerate}
+    \item \textbf{Phi-3 Mini 4K} (počatí: $3.8B$ parametrov)
+    \item \textbf{Gemma 3 4B Instruct} (Google; $4B$ parametrov)
+    \item \textbf{Qwen3 4B Instruct} (Alibaba; $4B$ parametrov)
+\end{enumerate}
+
+Každý model bol vyhodnotený v~dvoch režimoch:
+\begin{enumerate}
+    \item \textbf{Bazické}: Model bez fine-tuningu.
+    \item \textbf{Fine-tuned}: Model s~LoRA adaptérom trénovaný na energetických dátach.
+\end{enumerate}
+
+
+\section{Metriky vyhodnotenia}\label{sec:metrics}
+
+Aby sa mohlo objektívne porovnať kvalitu a efektívnosť jednotlivých modelov, bola implementovaná komplexná sada metrík. Všetky metriky sú vypočítva z~testovacej množiny 30--50 vzoriek.
+
+\subsection{Kvalitatívne metriky}
+
+\begin{itemize}
+    \item \textbf{G-Eval LLM-as-a-Judge}: Automatické vyhodnotenie kvality odpovědí pomocou Claude Haiku ako referenčného sudcu. Modely sú hodnotené v~stupňoch (1--10) v~nasledujúcich kategóriách:
+    \begin{enumerate}
+        \item \textbf{Relevancia}: Miira, do akej miery odpoveď bezprostredne rieši otázku.
+        \item \textbf{Koherentnosť}: Logická štrkúra a konzístentnosť argumentácie.
+        \item \textbf{Płynulosť}: Jazykový štýl, bez gramatických chýb.
+        \item \textbf{Faktálna presnosť}: Presnosť uvedených faktov a štatistík (v~meraní s~referenčnými zdrojmi).
+    \end{enumerate}
+
+    \item \textbf{Perplexity}: Štatistická mera kvality jazykového modelu, počítaná na completion tokenoch z~testovacích vzoriek:
+    \[
+        \text{Perplexity} = \exp\left( -\frac{1}{N} \sum_{i=1}^{N} \log P(x_i) \right)
+    \]
+    kde $P(x_i)$ je pravdepodobnosť tokena podľa modelu.
+\end{itemize}
+
+\subsection{Výkonnosť a efektívnosť}
+
+\begin{itemize}
+    \item \textbf{Time to First Token (TTFT)}: Čas v~ms od odoslania otázky po vygenerovanie prvého tokena. Meradlo latencií a interaktívnosti rozhrania.
+
+    \item \textbf{Tokens per Second (TPS)}: Počet tokenov, ktoré model generuje za sekundu. Meradlo rýchlosti generovania odpovědí.
+
+    \item \textbf{VRAM Memory Usage}: Zálobenie a Peak spotrebu pamäte GPU pri rôznych dĺžkach kontextu (128, 256, 512, 1024 tokenov). Kritériam pre posudzovanie nasaditelnosti na zariadeniach s~obmedzeným VRAM.
+\end{itemize}
+
+
+\section{Implementačné rozhodnutia a nástroje}
+
+\subsection{Technologický stack}
+\begin{itemize}
+    \item \textbf{Framework}: Hugging Face Transformers pre načítavanie a adaptáciu modelov.
+    \item \textbf{QLoRA}: PEFT knižnica (Parameter-Efficient Fine-Tuning) pre aplikáciu LoRA adaptérov.
+    \item \textbf{Backend}: FastAPI pre REST API a streaming odpovědí.
+    \item \textbf{Vyhodnotenie}: Vlastný script \texttt{evaluate\_models.py} pre automatizované porovnání metrík.
+\end{itemize}
+
+\subsection{Speedy optimalizácie}
+\begin{itemize}
+    \item \textbf{chat template}: Každý model má svoj vlastný chat template (formát konverzácie). Na príklad Qwen3 vyžaduje nastavenie \texttt{enable\_thinking=False} a odstránenie \texttt{<think>..</think>} tagov.
+
+    \item \textbf{Stop tokens}: Modely maj rôzne stop tokeny (Phi-3: ID 32007 \texttt{<|end|>}, Gemma-3: \texttt{<end\_of\_turn>}), ktoré sa musia správne ošetriť.
+
+    \item \textbf{TextIteratorStreamer}: Streamovanie tokena do klienta v~reálnom čase bez nutnosti čakať na vygenerovanie celej odpovede.
+\end{itemize}
+
+
+\section{Prípadní výzvy a iterácie}
+
+\subsection{Prechod na štruktúrovaný formát}
+
+Počiatočná verzia dátového súboru používala voľný textový formát. Avšak bolo zjisteno, že modely často:
+\begin{itemize}
+    \item Nespomenú úroveň rizika alebo dôvery.
+    \item Generujú nekonzistentne vstupné odpovědi.
+    \item Ťažko sa vyznažou pri nejasných alebo protichodných otázka.
+\end{itemize}
+
+Preto bol dátový súbor prepracovaný na \textbf{štruktúrovaný formát} s~explícitným polami \texttt{RISK LEVEL} a \texttt{CONFIDENCE}. To výrazne zvýšilo konzistenství a kvalitu výstupu z~fine-tunovaných modelov.
+
+\subsection{Dôvod prechodu na viacero modelov}
+
+Počiatok sa uvažovalo, že silnejšie všeobecné modely (ako Llama 3.1 8B alebo mistral) budú mať lepšiu kvalitu aj bez jemného ladenia. Avšak identifikoval sa pedagogický problém: \emph{na silách modeloch nie je dostatočne viditeľný príspevek jemného ladenia}.
+
+Namiesto toho, vybral sa prístup porovnania viacero \textbf{malých modelov} (3.8B až 4B parametrov) s~cieľom demonštrovať, ako jemné ladenie podstatne zvyšuje kvalitu výstupov maličko modelov v~špecifickej doméne.
+
+
+\section{Súčasný stav a odtiaľ}
+
+Na dátum \today{} boli všetky modely trénovanie s~novou štruktúrovanou verziou dátového súboru. Vyhodnotenie je v~progrese a metriky (G-Eval skóre, perplexity, TTFT, TPS, VRAM) sa vypočítavajú v~skripte \texttt{scripts/evaluate\_models.py}.
+
+Ďalšie kroky vrátane zahrnutí podrobného porovnávacieho prehladu v~kapitole \textit{Vyhodnotenie}.
