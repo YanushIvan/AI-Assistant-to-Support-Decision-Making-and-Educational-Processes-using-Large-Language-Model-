@@ -1,0 +1,199 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Implementácia}
+\label{ch:implementation}
+
+V tejto kapitole je opísaná praktická implementácia pipeline doménovej adaptácie malých jazykových modelov pre energetické úlohy: od výberu modelov a prípravy dát až po konfiguráciu tréningu na báze metodológie QLoRA.
+
+\section{Výber modelov a ich architektonické vlastnosti}
+
+Pre experimenty boli zvolené tri otvorené modely triedy SLM (Small Language Model), ktoré sú veľkosťou porovnateľné, ale líšia sa architektonickými detailmi:
+
+\begin{itemize}
+    \item \textbf{Phi-3 Mini (3.8B)} (\texttt{microsoft/Phi-3-mini-4k-instruct}),
+    \item \textbf{Gemma 3 4B} (\texttt{google/gemma-3-4b-it}),
+    \item \textbf{Qwen3 4B} (\texttt{Qwen/Qwen3-4B-Instruct-2507}).
+\end{itemize}
+
+Hlavné kritériá výberu:
+\begin{itemize}
+    \item veľkosť približne 4B parametrov, ktorá umožňuje tréning na obmedzených GPU zdrojoch pri 4-bitovej kvantizácii,
+    \item dostupnosť oficiálnych instruction/chat verzií,
+    \item kompatibilita s ekosystémom \texttt{transformers + peft + trl + bitsandbytes},
+    \item architektonická rôznorodosť vhodná na porovnanie (odlišná tokenizácia, chat šablóny, mechanizmy attention a implementácia forward priechodu).
+\end{itemize}
+
+Z inžinierskeho pohľadu sa modely vhodne dopĺňajú: Phi-3 Mini je orientovaná na vysokú efektivitu pri malom počte parametrov, Gemma 3 4B dosahuje kvalitné sledovanie inštrukcií a pri textovom tréningu vyžaduje špecifickú integráciu (keďže ide o multimodálnu architektúru), Qwen3 4B ponúka stabilný výkon v analytických úlohách a konverzačnom režime.
+
+\subsection{Prečo Instruct verzie namiesto Base váh}
+
+V projekte je cieľovým scenárom \textit{interaktívny asistent}, kde používateľ zadáva inštrukciu a model má vrátiť stručnú, štruktúrovanú a prakticky použiteľnú odpoveď. Pre takýto režim sú Instruct váhy vhodnejšou inicializáciou než Base váhy z týchto dôvodov:
+
+\begin{itemize}
+    \item Instruct modely už prešli učením vo formáte \enquote{inštrukcia $\rightarrow$ odpoveď}, preto sa v SFT zvyčajne učia rýchlejšie a stabilnejšie,
+    \item Base modely sú optimalizované hlavne na pokračovanie textu, nie na disciplinované konverzačné odpovede,
+    \item pri obmedzenom výpočtovom rozpočte je výhodné nepreúčať základné správanie modelu od nuly, ale sústrediť sa na doménové znalosti,
+    \item štart z Instruct váh znižuje riziko degradácie konverzačných schopností počas PEFT tréningu na menšom doménovom datasete.
+\end{itemize}
+
+Inými slovami, Instruct inicializácia v tomto projekte funguje ako silný \textit{behavioral prior}: QLoRA adaptéry dolaďujú doménové znalosti a štýl odpovedí, nie základnú schopnosť modelu nasledovať inštrukcie.
+
+\section{Dáta a štruktúra datasetu}
+
+\subsection{Formát a organizácia dát}
+
+Tréning bol realizovaný na JSONL datasetoch:
+\begin{itemize}
+    \item \texttt{data/energy\_data.jsonl} -- pôvodný doménový dataset,
+    \item \texttt{data/energy\_data\_structured.jsonl} -- štruktúrovaná verzia pre cieľový formát odpovede.
+\end{itemize}
+
+Každý riadok JSONL predstavuje jednu tréningovú vzorku s poľami:
+\begin{itemize}
+    \item \texttt{prompt}: otázka/inštrukcia používateľa,
+    \item \texttt{completion}: cieľová odpoveď asistenta.
+\end{itemize}
+
+Formálne je štruktúra vzorky definovaná ako
+\begin{equation}
+    x_i = \{p_i, c_i\}, \quad p_i \in \mathcal{P},\; c_i \in \mathcal{C}
+\end{equation}
+kde $p_i$ je používateľský vstup a $c_i$ je cieľová odpoveď v doménovom štýle.
+
+V použitej verzii projektu má dataset nasledujúci rozsah:
+\begin{itemize}
+    \item \texttt{energy\_data.jsonl}: 1126 záznamov,
+    \item \texttt{energy\_data\_structured.jsonl}: 1159 záznamov.
+\end{itemize}
+
+\subsection{Logika prompt-completion a jej vhodnosť}
+
+Zvolený formát prompt-completion je pre tento scenár vhodný z troch dôvodov:
+
+\begin{itemize}
+    \item \textbf{Priama kompatibilita s Causal LM.} Dialóg sa serializuje cez chat-template tokenizéra do sekvencie system/user/assistant a model sa učí predikovať tokeny asistenta.
+    \item \textbf{Kontrolovaný tréningový signál.} V pipeline sa používajú maskované labely: tokeny systémovej a používateľskej časti majú hodnotu $-100$, takže loss sa počíta iba z completion časti. Tým sa model netrestá za reprodukciu vstupu a sústredí sa na kvalitu odpovede.
+    \item \textbf{Stabilita pre PEFT.} Pri QLoRA sa aktualizuje len obmedzený počet parametrov (LoRA adaptéry), preto je dôležitý jednoznačný supervised signál. Štruktúrovaný completion tento signál poskytuje.
+\end{itemize}
+
+V štruktúrovanej verzii odpovede sa používa šablóna:
+\begin{verbatim}
+ANSWER: ...
+
+KEY FACTS:
+- ...
+- ...
+
+RISK LEVEL: Low/Medium/High
+...
+
+CONFIDENCE: High/Medium/Low
+...
+\end{verbatim}
+
+Táto štruktúra je prínosná nielen pre používateľa, ale aj pre samotné učenie: model si osvojuje opakovateľný formát generovania, čo zvyšuje predvídateľnosť výstupu počas inferencie.
+
+\section{Metodológia QLoRA}
+
+\subsection{Technická schéma metódy}
+
+QLoRA kombinuje dva mechanizmy:
+\begin{itemize}
+    \item 4-bitovú kvantizáciu základného modelu (v projekte: NF4 cez \texttt{BitsAndBytesConfig}),
+    \item low-rank adaptáciu pomocou LoRA matíc trénovaných nad zmrazenými kvantovanými váhami.
+\end{itemize}
+
+Nech má lineárna vrstva váhovú maticu $W$. V LoRA je aktualizácia definovaná ako
+\begin{equation}
+    W' = W + \Delta W, \qquad \Delta W = BA,
+\end{equation}
+kde $A \in \mathbb{R}^{r \times d}$, $B \in \mathbb{R}^{k \times r}$ a $r$ je malý rank ($r \ll \min(d,k)$).
+
+V QLoRA sú pôvodné váhy $W$ uložené v 4-bitovej reprezentácii, no výpočty a učenie adaptérov prebiehajú vo vyššej presnosti (v projekte prevažne \texttt{bfloat16}). Tým sa znižujú nároky na VRAM pri zachovaní numerickej stability potrebnej na doučenie.
+
+\subsection{Prečo je QLoRA efektívna pri obmedzených zdrojoch}
+
+Efektivita vyplýva z kombinácie viacerých faktorov:
+\begin{itemize}
+    \item \textbf{Nižšie pamäťové nároky na váhy:} prechod zo 16-bitovej na 4-bitovú reprezentáciu zmenšuje pamäťový footprint modelu približne 4-násobne.
+    \item \textbf{Malý počet trénovateľných parametrov:} učia sa len LoRA adaptéry, nie celé váhy modelu.
+    \item \textbf{Optimalizátor pre low-precision režim:} použitý \texttt{paged\_adamw\_8bit} znižuje nároky na pamäť stavov optimalizátora.
+    \item \textbf{Gradient accumulation:} umožňuje väčší efektívny batch bez nárastu okamžitej spotreby VRAM.
+\end{itemize}
+
+V praxi to umožňuje doučenie modelov triedy 4B na jednom GPU spotrebiteľskej triedy, čo zodpovedá hardvérovým obmedzeniam projektu.
+
+\section{Konfigurácia tréningu}
+
+\subsection{Spoločné parametre pipeline}
+
+Pre všetky modely je implementovaný spoločný SFT postup:
+\begin{itemize}
+    \item tréningový framework: \texttt{TRL SFTTrainer},
+    \item dátový formát: JSONL \texttt{prompt/completion},
+    \item dĺžka sekvencie: \texttt{max\_seq\_length = 1024},
+    \item kvantizácia: \texttt{load\_in\_4bit=True}, typ \texttt{nf4},
+    \item optimalizátor: \texttt{paged\_adamw\_8bit},
+    \item zapnutý \texttt{gradient\_checkpointing},
+    \item uloženie výsledku: adaptér do adresára \texttt{final\_adapter} po ukončení tréningu.
+\end{itemize}
+
+Súčasťou pipeline je aj jednotný systémový prompt, ktorý definuje požadovanú štruktúru a kvalitu odpovede (stručnosť, faktickosť, práca s číselnými údajmi, risk a confidence).
+
+\subsection{Hyperparametre podľa modelov}
+
+\textbf{Phi-3 Mini (SFT)}
+\begin{itemize}
+    \item počet epoch: \texttt{10},
+    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
+    \item \texttt{gradient\_accumulation\_steps}: \texttt{16};
+    \item learning rate: \texttt{2e-4};
+    \item \texttt{test\_size}: \texttt{0.01};
+    \item compute dtype: \texttt{bfloat16};
+    \item LoRA: \texttt{r=64}, \texttt{alpha=128}, \texttt{target\_modules=[qkv\_proj, o\_proj, gate\_up\_proj, down\_proj]};
+    \item \texttt{warmup\_ratio=0.03}, \texttt{weight\_decay=0.01}.
+\end{itemize}
+
+\textbf{Gemma 3 4B (SFT)}
+\begin{itemize}
+    \item počet epoch: \texttt{3},
+    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
+    \item \texttt{gradient\_accumulation\_steps}: \texttt{8};
+    \item learning rate: \texttt{2e-4};
+    \item \texttt{test\_size}: \texttt{0.05};
+    \item compute dtype: \texttt{bfloat16};
+    \item \texttt{bnb\_4bit\_use\_double\_quant=True};
+    \item LoRA: \texttt{r=16}, \texttt{alpha=32}, \texttt{target\_modules=[q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj]};
+    \item \texttt{max\_grad\_norm=0.3}, \texttt{warmup\_steps=10}, \texttt{lr\_scheduler\_type=constant}.
+\end{itemize}
+
+\textbf{Qwen3 4B (SFT)}
+\begin{itemize}
+    \item počet epoch: \texttt{3},
+    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
+    \item \texttt{gradient\_accumulation\_steps}: \texttt{16};
+    \item learning rate: \texttt{2e-4};
+    \item \texttt{test\_size}: \texttt{0.01};
+    \item compute dtype: \texttt{bfloat16};
+    \item LoRA: \texttt{r=16}, \texttt{alpha=32}, \texttt{target\_modules=[q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj]};
+    \item \texttt{warmup\_ratio=0.03}, \texttt{weight\_decay=0.01}.
+\end{itemize}
+
+\subsection{Dodatočná fáza DPO (voliteľná)}
+
+V projekte je implementovaná aj dodatočná preference-optimalizácia (DPO) nad SFT adaptérom (realizovaná pre Phi-3):
+\begin{itemize}
+    \item inicializácia modelu: SFT adaptér ako policy/reference,
+    \item \texttt{beta=0.1};
+    \item epochs: \texttt{1};
+    \item learning rate: \texttt{5e-5};
+    \item \texttt{per\_device\_batch=1}, \texttt{grad\_accum=8};
+    \item \texttt{max\_length=1024}, \texttt{max\_prompt\_length=512};
+    \item LoRA: \texttt{r=16}, \texttt{alpha=32}.
+\end{itemize}
+
+Táto fáza nenahrádza SFT, ale slúži ako mechanizmus dodatočnej kalibrácie preferencií modelu medzi \enquote{lepšou} a \enquote{horšou} odpoveďou na rovnaký vstup.
+
+\section{Zhrnutie implementácie}
+
+Implementácia je navrhnutá ako reprodukovateľná a výpočtovo efektívna pipeline: Instruct modely poskytujú vhodné počiatočné správanie asistenta, formát prompt-completion zabezpečuje čistý supervised signál a QLoRA umožňuje doménovú adaptáciu na obmedzenom hardvéri bez plného doučenia všetkých parametrov. Výsledkom je praktický kompromis medzi kvalitou odpovedí, výpočtovou náročnosťou a rýchlosťou experimentálnych iterácií.
