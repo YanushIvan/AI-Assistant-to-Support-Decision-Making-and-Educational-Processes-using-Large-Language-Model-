@@ -38,13 +38,15 @@ Qwen3 4B je súčasťou najnovšej generácie modelov od Alibaba Group~\cite{Qwe
 
 \section{Techniky doučenia}
 
+V kontexte tejto práce označuje pojem \emph{fine-tuning} riadenú adaptáciu už predtrénovaného modelu na cieľovú úlohu a doménu. Namiesto učenia všeobecného jazykového správania od nuly sa modelu poskytuje užší tréningový signál, ktorý mení najmä štýl odpovedí, faktické zameranie a robustnosť v konkrétnom type otázok.
+
 \subsection{Plné doučenie}
 
 Plné doučenie (angl.\ \emph{full fine-tuning}) aktualizuje všetky parametre modelu počas trénovania na doménovom datasete. Hoci táto metóda dosahuje najvyššiu mieru adaptácie na cieľovú doménu, jej výpočtové nároky sú porovnateľné s nároky pôvodného predtrénovania -- teda desiatky GPU s veľkými pamäťami. Pre modely rádovo miliárd parametrov je plné doučenie pri obmedzených zdrojoch nerealizovateľné.
 
 \subsection{Parameter-efektívne doučenie (PEFT)}
 
-Parameter-efektívne doučenie (PEFT, z angl.\ \emph{Parameter-Efficient Fine-Tuning}) predstavuje skupinu metód, ktoré mrazené pôvodné váhy modelu a trénujú len malý počet nových parametrov. Výsledkom je výrazné zníženie pamäťových a výpočtových nárokov pri zachovaní podstatnej časti adaptačného efektu.
+Parameter-efektívne doučenie (PEFT, z angl.\ \emph{Parameter-Efficient Fine-Tuning}) predstavuje skupinu metód, ktoré zmrazujú pôvodné váhy modelu a trénujú len malý počet nových parametrov. Výsledkom je výrazné zníženie pamäťových a výpočtových nárokov pri zachovaní podstatnej časti adaptačného efektu.
 
 \subsection{LoRA}
 
@@ -63,6 +65,16 @@ QLoRA (Quantized LoRA) rozširuje LoRA o 4-bitové kvantovania bázy modelu~\cit
 \subsection{Inštrukčné doučenie (SFT)}
 
 Predtrénované modely generujú text pokračovaním vstupnej sekvencie -- nie sú priamo nastavené na sledovanie inštrukcií vo formáte otázka--odpoveď. Inštrukčné doučenie (SFT, z angl.\ \emph{Supervised Fine-Tuning}) adaptuje model na tento formát pomocou označených príkladov~\cite{Ouyang2022InstructGPT}. Pri trénovaní sú tokeny systémovej správy a otázky maskované -- strata (\emph{loss}) sa počíta iba z predikcie tokenov odpovede asistenta. Model sa teda učí výhradne generovať relevantné odpovede, nie reprodukovať vstupný kontext. V tejto práci bola SFT realizovaná pomocou triedy \texttt{SFTTrainer} z knižnice TRL.
+
+\subsection{Popularita fine-tuningu v praxi}
+
+Fine-tuning sa stal dominantným prístupom nasadzovania jazykových modelov do praxe z troch hlavných dôvodov. Prvým je \textbf{správanie modelu voči inštrukciám}: výsledky InstructGPT ukázali, že explicitné doučenie na formát inštrukcia--odpoveď vedie k výrazne lepšej použiteľnosti modelu pre reálneho používateľa~\cite{Ouyang2022InstructGPT}. Druhým je \textbf{ekonomika nasadenia}: rastúca veľkosť modelov opísaná v prehľadovej štúdii~\cite{Zhao2023SurveyLLM} robí plné doučenie nákladným, čo prirodzene zvýhodňuje PEFT postupy. Tretím dôvodom je \textbf{doménová presnosť}: práca~\cite{Gururangan2020DontStop} empiricky ukazuje, že adaptácia na doménové dáta má merateľný prínos aj bez zmeny základnej architektúry modelu.
+
+Popularitu navyše posilnili metódy LoRA a QLoRA. LoRA~\cite{Hu2021LoRA} umožnila preniesť väčšinu adaptačného výkonu do malého počtu trénovateľných parametrov a QLoRA~\cite{Dettmers2023QLoRA} pridala možnosť realizovať tréning nad 4-bitovo kvantovanou bázou modelu. Kombinácia týchto dvoch krokov vytvorila praktický štandard pre prostredia, kde je prioritou pomer kvalita/výpočtové náklady.
+
+\subsection{Zvolený fine-tuning postup v tejto práci}
+
+Táto práca používa viacfázový, ale výpočtovo úsporný postup: (1) inicializácia z Instruct verzií modelov, (2) doménové SFT na dátach energetiky, (3) parameter-efektívna adaptácia pomocou QLoRA a (4) dodatočná preferenčná kalibrácia cez DPO. Tento návrh vychádza z cieľa dosiahnuť prakticky použiteľné odpovede pri obmedzenom hardvéri, pričom sa zachová reprodukovateľnosť experimentov a porovnateľnosť modelov.
 
 
 \section{Použité knižnice a nástroje}

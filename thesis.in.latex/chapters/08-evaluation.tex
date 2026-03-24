@@ -2,4 +2,59 @@
 
 \chapter{Vyhodnotenie}\label{ch:evaluation}
 
-Vyhodnocovacia časť je kľúčovou časťou záverečnej práce. Tato časť obsahuje vyhodnotenie navrhnutého (vytvoreného) riešenia. Uprednostňované je objektívne vyhodnotenie výsledkov práce, ktoré sa opiera o meranie a štatistické metódy, prípadne matematické dôkazy. V prípade nameraných hodnôt musí autor opísať metódu merania, priebeh merania, výsledky a interpretáciu výsledkov v kontexte riešeného problému a stanovených cieľov. Na základe vyhodnotenia riešenia autor opíše prínosy svojej práce. Vyhodnocovacia časť tvorí zvyčajne ¼ jadra práce.
+Kapitola vyhodnocuje, do akej miery navrhnuté riešenie spĺňa ciele práce: poskytovať vecné energetické odpovede, zachovať výpočtovú efektívnosť pri obmedzenom hardvéri a umožniť praktické nasadenie vo forme konverzačného asistenta. Vyhodnotenie preto kombinuje kvalitatívne jazykové metriky, prevádzkové metriky inferencie a porovnanie základných a doučených verzií modelov.
+
+\section{Ciele vyhodnotenia}
+
+Vyhodnotenie je navrhnuté tak, aby odpovedalo na tri výskumné otázky:
+\begin{itemize}
+	\item prináša doménové doučenie merateľné zlepšenie kvality odpovedí oproti základným modelom,
+	\item aké sú časové a pamäťové nároky jednotlivých modelov pri inferencii,
+	\item ktorý model predstavuje najlepší kompromis medzi kvalitou odpovede a náročnosťou nasadenia.
+\end{itemize}
+
+\section{Experimentálne nastavenie}
+
+Hodnotenie prebieha na rovnakých typoch vstupov z domény energetiky pre všetky porovnávané modely. Každá modelová rodina je testovaná v dvoch režimoch: \emph{base} (bez doménového adaptéra) a \emph{fine-tuned} (s doménovým adaptérom). Tento postup umožňuje izolovať efekt samotného doučenia.
+
+Na zabezpečenie reprodukovateľnosti bol pripravený samostatný hodnotiaci skript \texttt{scripts/evaluate\_models.py}, ktorý používa jednotné generovacie nastavenia a jednotný formát vstupných otázok. Porovnanie teda nie je ovplyvnené odlišnými dekódovacími parametrami medzi modelmi.
+
+\section{Použité metriky}
+
+\subsection{Kvalita odpovedí}
+
+Kvalita výstupu je hodnotená metódou \emph{LLM-as-a-judge} (G-Eval), ktorá priraďuje skóre v dimenziách:
+\begin{itemize}
+	\item relevance (vecná súvislosť odpovede s otázkou),
+	\item coherence (vnútorná logická konzistentnosť),
+	\item fluency (jazyková plynulosť),
+	\item factual accuracy (faktická správnosť).
+\end{itemize}
+
+Doplňujúco sa vyhodnocuje perplexita na testovacích vzorkách, ktorá približne vyjadruje, ako dobre model predikuje cieľový text pri doménových vstupoch.
+
+\subsection{Prevádzkové metriky}
+
+Pre praktické nasadenie asistenta sú sledované najmä:
+\begin{itemize}
+	\item \texttt{TTFT} (\emph{time to first token}) -- latencia prvej odozvy,
+	\item \texttt{TPS} (\emph{tokens per second}) -- priepustnosť generovania,
+	\item spotreba VRAM po načítaní modelu a pri rôznych dĺžkach kontextu.
+\end{itemize}
+
+Tieto metriky priamo súvisia s používateľskou skúsenosťou a určujú, či je možné riešenie reálne prevádzkovať na dostupnom hardvéri.
+
+\section{Kritériá interpretácie výsledkov}
+
+Pri interpretácii výsledkov sa uprednostňuje medzi-modelové porovnanie trendov pred izolovanými hodnotami jednej metriky. Model je považovaný za vhodný na nasadenie, ak súčasne:
+\begin{itemize}
+	\item dosahuje stabilné zlepšenie kvalitatívnych metrík po doučení,
+	\item zachováva prijateľnú latenciu odpovede,
+	\item neprekračuje pamäťové limity cieľového hardvéru.
+\end{itemize}
+
+Takto definovaný rámec vyhodnotenia zodpovedá cieľu práce: neoptimalizovať model iba na benchmarkové skóre, ale na praktickú použiteľnosť v doméne energetiky.
+
+\section{Limity vyhodnotenia}
+
+Výsledky je potrebné interpretovať s ohľadom na limity experimentu. Najvýznamnejšími sú obmedzený rozsah doménového datasetu, závislosť automatického hodnotenia od použitého sudcovského modelu a citlivosť metriky factual accuracy na formuláciu otázky. Napriek týmto limitom poskytuje kombinácia kvalitatívnych a prevádzkových metrík dostatočný základ na porovnanie efektivity jednotlivých prístupov doučenia.

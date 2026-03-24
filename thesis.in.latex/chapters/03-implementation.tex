@@ -42,10 +42,9 @@ Inými slovami, Instruct inicializácia v tomto projekte funguje ako silný \tex
 
 \subsection{Formát a organizácia dát}
 
-Tréning bol realizovaný na JSONL datasetoch:
+Tréning bol realizovaný na jednom JSONL datasete v štruktúrovanom formáte:
 \begin{itemize}
-    \item \texttt{data/energy\_data.jsonl} -- pôvodný doménový dataset,
-    \item \texttt{data/energy\_data\_structured.jsonl} -- štruktúrovaná verzia pre cieľový formát odpovede.
+    \item \texttt{data/energy\_data\_structured.jsonl} -- finálny tréningový dataset pre cieľový formát odpovede.
 \end{itemize}
 
 Každý riadok JSONL predstavuje jednu tréningovú vzorku s poľami:
@@ -62,8 +61,12 @@ kde $p_i$ je používateľský vstup a $c_i$ je cieľová odpoveď v doménovom 
 
 V použitej verzii projektu má dataset nasledujúci rozsah:
 \begin{itemize}
-    \item \texttt{energy\_data.jsonl}: 1126 záznamov,
     \item \texttt{energy\_data\_structured.jsonl}: 1159 záznamov.
+\end{itemize}
+
+Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
+\begin{itemize}
+    \item \texttt{energy\_data\_dpo.jsonl}: 1126 záznamov vo formáte \texttt{prompt/chosen/rejected}.
 \end{itemize}
 
 \subsection{Logika prompt-completion a jej vhodnosť}
@@ -92,6 +95,19 @@ CONFIDENCE: High/Medium/Low
 \end{verbatim}
 
 Táto štruktúra je prínosná nielen pre používateľa, ale aj pre samotné učenie: model si osvojuje opakovateľný formát generovania, čo zvyšuje predvídateľnosť výstupu počas inferencie.
+
+\subsection{Príprava dát v zdieľanom dátovom loaderi}
+
+Implementácia SFT používa spoločnú dátovú vrstvu pre všetky tri modely (\texttt{training/shared/data\_loader.py}). Táto vrstva zabezpečuje:
+\begin{itemize}
+    \item načítanie JSONL datasetu cez knižnicu \texttt{datasets},
+    \item serializáciu dialógu \texttt{system/user/assistant} cez \texttt{tokenizer.apply\_chat\_template},
+    \item vytvorenie \texttt{input\_ids}, \texttt{attention\_mask} a \texttt{labels},
+    \item maskovanie všetkých netréningových tokenov hodnotou $-100$,
+    \item rozdelenie datasetu na trénovaciu a validačnú časť.
+\end{itemize}
+
+Výhodou tohto riešenia je jednotná metodika spracovania dát naprieč modelmi. Rozdiely medzi experimentmi sú preto dané najmä architektúrou modelov a hyperparametrami, nie odlišným predspracovaním.
 
 \section{Metodológia QLoRA}
 
@@ -179,21 +195,57 @@ Súčasťou pipeline je aj jednotný systémový prompt, ktorý definuje požado
     \item \texttt{warmup\_ratio=0.03}, \texttt{weight\_decay=0.01}.
 \end{itemize}
 
-\subsection{Dodatočná fáza DPO (voliteľná)}
+\subsection{Modelovo špecifické implementačné detaily}
 
-V projekte je implementovaná aj dodatočná preference-optimalizácia (DPO) nad SFT adaptérom (realizovaná pre Phi-3):
+Okrem hyperparametrov obsahuje pipeline aj niekoľko technických úprav potrebných pre stabilný tréning:
 \begin{itemize}
-    \item inicializácia modelu: SFT adaptér ako policy/reference,
-    \item \texttt{beta=0.1};
-    \item epochs: \texttt{1};
-    \item learning rate: \texttt{5e-5};
-    \item \texttt{per\_device\_batch=1}, \texttt{grad\_accum=8};
-    \item \texttt{max\_length=1024}, \texttt{max\_prompt\_length=512};
-    \item LoRA: \texttt{r=16}, \texttt{alpha=32}.
+    \item \textbf{Gemma 3 4B:} pred tréningom je aplikovaný patch metódy \texttt{forward}, ktorý pri text-only batchoch dopĺňa \texttt{token\_type\_ids}. Bez tejto úpravy môže multimodálny model zlyhať na čisto textovom vstupe.
+    \item \textbf{Gemma 3 4B:} v \texttt{SFTTrainer} sa explicitne používa \texttt{processing\_class=tokenizer}, aby sa obišla automatická voľba multimodálneho procesora.
+    \item \textbf{Qwen3 4B:} počas inferencie je \texttt{enable\_thinking=False}, aby výstup neobsahoval interné \enquote{thinking} bloky a bol konzistentný s požadovaným formátom odpovede.
+\end{itemize}
+
+\subsection{Dodatočná fáza DPO}
+
+V projekte sa po SFT používa aj dodatočná preference-optimalizácia (DPO) pre všetky tri modely (Phi-3, Gemma 3 a Qwen3):
+\begin{itemize}
+    \item inicializácia policy modelu zo SFT adaptéra,
+    \item referenčný model je odvodený z rovnakého SFT checkpointu,
+    \item tréning prebieha na preference datasete vo formáte \texttt{prompt/chosen/rejected},
+    \item typická konfigurácia v projekte: \texttt{beta=0.1}, \texttt{epochs=1}, \texttt{learning\_rate=5e-5}, \texttt{gradient\_accumulation\_steps=8}, \texttt{max\_length=1024}, \texttt{max\_prompt\_length=512}, \texttt{eval\_ratio=0.02}.
 \end{itemize}
 
 Táto fáza nenahrádza SFT, ale slúži ako mechanizmus dodatočnej kalibrácie preferencií modelu medzi \enquote{lepšou} a \enquote{horšou} odpoveďou na rovnaký vstup.
 
+Implementačne je DPO realizované nasledovne: pre referenčný aj policy model sa najprv načíta kvantizovaná báza modelu, následne sa zlúči SFT adaptér (\texttt{merge\_and\_unload}) a na policy vetvu sa opätovne aplikuje LoRA. Tento postup zodpovedá praxi, kde DPO jemne dolaďuje preferencie už doménovo adaptovaného modelu namiesto tréningu od nuly.
+
+\section{Implementácia inferencie a aplikačnej vrstvy}
+
+Okrem tréningovej pipeline bola v projekte implementovaná aj produkčne orientovaná inferenčná vrstva postavená na \texttt{FastAPI}. Aplikácia je organizovaná modulárne (\texttt{core}, \texttt{api}, \texttt{services}, \texttt{models}, \texttt{templates}, \texttt{static}), čo zjednodušuje rozšíriteľnosť aj údržbu.
+
+Kľúčovou súčasťou je služba \texttt{ModelService}, ktorá:
+\begin{itemize}
+    \item dynamicky načítava zvolený model (Phi-3, Gemma 3, Qwen3),
+    \item podľa konfigurácie pripája príslušný LoRA adaptér,
+    \item pri prepnutí modelu uvoľní predchádzajúci model z VRAM,
+    \item štandardizuje generovanie odpovedí cez jednotné parametre dekódovania.
+\end{itemize}
+
+Pre stabilné ukončenie generovania sa používajú modelovo špecifické stop tokeny (napr. \texttt{<|end|>} pre Phi-3, \texttt{<|im\_end|>} pre Qwen, \texttt{<end\_of\_turn>} pre Gemma). Výstup je následne čistený od technických tokenov a pri Qwen modeli aj od prípadných \texttt{<think>} blokov.
+
+API vrstva poskytuje najmä endpointy \texttt{/api/chat}, \texttt{/api/models} a \texttt{/api/health}. Komunikácia prebieha vo formáte chat správ (história + nový prompt), pričom systémový prompt je centrálne definovaný v konfigurácii a je jednotný pre všetky modely. Tým sa zabezpečuje porovnateľnosť odpovedí medzi modelmi aj konzistentné používateľské rozhranie.
+
+\section{Vyhodnocovacia pipeline a reprodukovateľnosť}
+
+Pre experimentálne porovnanie modelov je pripravený samostatný skript \texttt{scripts/evaluate\_models.py}, ktorý meria kvalitatívne aj prevádzkové metriky:
+\begin{itemize}
+    \item G-Eval (relevance, coherence, fluency, factual accuracy),
+    \item perplexitu na testovacích vzorkách,
+    \item rýchlostné metriky \texttt{TTFT} a \texttt{TPS},
+    \item spotrebu VRAM pri rôznych dĺžkach kontextu.
+\end{itemize}
+
+Reprodukovateľnosť tréningu je podporená oddelením konfigurácií podľa modelových rodín (\texttt{training/phi3}, \texttt{training/gemma3}, \texttt{training/qwen3}) a jednotnými vstupnými dátami. Všetky experimenty ukladajú výsledné adaptéry do priečinkov \texttt{final\_adapter}, čo umožňuje ich okamžité použitie v API vrstve bez dodatočných konverzií.
+
 \section{Zhrnutie implementácie}
 
-Implementácia je navrhnutá ako reprodukovateľná a výpočtovo efektívna pipeline: Instruct modely poskytujú vhodné počiatočné správanie asistenta, formát prompt-completion zabezpečuje čistý supervised signál a QLoRA umožňuje doménovú adaptáciu na obmedzenom hardvéri bez plného doučenia všetkých parametrov. Výsledkom je praktický kompromis medzi kvalitou odpovedí, výpočtovou náročnosťou a rýchlosťou experimentálnych iterácií.
+Implementácia je navrhnutá ako reprodukovateľná a výpočtovo efektívna pipeline: Instruct modely poskytujú vhodné počiatočné správanie asistenta, zdieľaný dátový loader zabezpečuje jednotný supervised signál, QLoRA umožňuje doménovú adaptáciu na obmedzenom hardvéri a DPO dopĺňa preferenčnú kalibráciu odpovedí. Výsledkom je praktický kompromis medzi kvalitou odpovedí, výpočtovou náročnosťou a rýchlosťou experimentálnych iterácií spolu s priamo nasaditeľným API riešením.

@@ -2,6 +2,12 @@
 
 \chapter{Záver}\label{ch:summary}
 
-Záver práce obsahuje zhrnutie výsledkov práce s~jasným opisom prínosov a pôvodných (vlastných) výsledkov autora a vyhodnotenie splnenia stanovených cieľov. Je to stručné zhrnutie informácií uvedených v~záverečnej práci. Záver by nemal obsahovať nové informácie.
+Práca sa zamerala na návrh a realizáciu AI asistenta pre energetiku v Európe s využitím malých jazykových modelov a výpočtovo úsporných metód doučenia. Hlavným cieľom bolo overiť, či je možné dosiahnuť prakticky použiteľné doménové odpovede aj bez veľkých výpočtových klastrov.
 
-V~závere by mal tiež autor poukázať na prípadné otvorené otázky, ktoré sú nad rámec rozsahu práce a mal by odporučiť ďalšie aktivity na pokračovanie pri riešení problému. Rozsah záveru je minimálne 1 celá strana.
+V teoretickej časti bol analyzovaný vývoj jazykových modelov so zameraním na parameter-efektívne fine-tuning techniky. Na základe tejto analýzy bol pre experimentálnu časť zvolený postup kombinujúci Instruct inicializáciu, SFT, QLoRA a doplnkovú DPO kalibráciu. Tento postup bol implementovaný pre tri modelové rodiny (Phi-3 Mini, Gemma 3 4B a Qwen3 4B) pri jednotnej dátovej schéme a porovnateľných tréningových podmienkach.
+
+Praktickým výstupom práce je reprodukovateľná tréningová pipeline a funkčný konverzačný systém postavený na FastAPI, ktorý umožňuje prepínanie modelov, generovanie štruktúrovaných odpovedí a prevádzku na obmedzenom hardvéri. Dôležitým prínosom je aj jednotná vyhodnocovacia metodika spájajúca kvalitatívne metriky odpovedí s prevádzkovými metrikami (latencia, priepustnosť, pamäťové nároky).
+
+Stanovené ciele práce boli splnené v rozsahu návrhu, implementácie a experimentálneho rámca. Riešenie zároveň potvrdilo, že malé modely po doménovej adaptácii predstavujú realistickú alternatívu k veľkým všeobecným modelom v scenároch, kde sú rozhodujúce náklady, dostupnosť výpočtových zdrojov a rýchlosť nasadenia.
+
+Priestor na ďalší výskum zostáva najmä v rozšírení datasetu, detailnejšom meraní robustnosti voči nejednoznačným otázkam, porovnaní SFT a DPO variantov na širšej sade metrík a v doplnení retrieval mechanizmu s citáciami zdrojov. Tieto kroky by mohli ďalej zvýšiť faktickú spoľahlivosť systému a jeho využiteľnosť v rozhodovacích procesoch.

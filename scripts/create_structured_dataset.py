@@ -1,9 +1,8 @@
 """
 Specialized Format Dataset Creator
 =====================================
-Converts the existing energy Q&A dataset into a structured format that the model
-is trained to always produce. This creates a VISIBLY different output compared
-to the base model — the base model never produces this exact structure.
+Loads the structured energy Q&A dataset and normalizes entries to a consistent
+structured format when needed. Already structured entries are preserved.
 
 Structured output format:
 ─────────────────────────
@@ -37,8 +36,8 @@ import re
 import os
 
 _ROOT        = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-INPUT_JSONL  = os.path.join(_ROOT, "data", "energy_data.jsonl")
-OUTPUT_JSONL = os.path.join(_ROOT, "data", "energy_data_structured.jsonl")
+INPUT_JSONL  = os.path.join(_ROOT, "data", "energy_data_structured.jsonl")
+OUTPUT_JSONL = os.path.join(_ROOT, "data", "energy_data_structured.normalized.jsonl")
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -112,6 +111,10 @@ def infer_confidence(completion: str) -> tuple[str, str]:
 def build_structured_completion(prompt: str, completion: str) -> str:
     """Convert a plain completion into the structured format."""
 
+    # Keep already structured answers unchanged.
+    if completion.lstrip().startswith("ANSWER:"):
+        return completion
+
     sentences = extract_sentences(completion)
     direct_answer = sentences[0] if sentences else completion[:120]
 
@@ -143,7 +146,7 @@ print(f"Reading {INPUT_JSONL}...")
 with open(INPUT_JSONL, "r", encoding="utf-8") as f:
     examples = [json.loads(line) for line in f if line.strip()]
 
-print(f"Converting {len(examples)} examples to structured format...")
+print(f"Normalizing {len(examples)} examples to structured format...")
 
 written = 0
 with open(OUTPUT_JSONL, "w", encoding="utf-8") as out_f:

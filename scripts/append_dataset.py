@@ -350,18 +350,6 @@ entries = [
 ]
 
 # ---------------------------------------------------------------------------
-# Write to energy_data.jsonl (plain format)
-# ---------------------------------------------------------------------------
-plain_path = BASE / "energy_data.jsonl"
-plain_lines = [
-    json.dumps({"prompt": e["prompt"], "completion": e["completion"]}, ensure_ascii=False)
-    for e in entries
-]
-with open(plain_path, "a", encoding="utf-8") as f:
-    f.write("\n" + "\n".join(plain_lines) + "\n")
-print(f"[+] Appended {len(plain_lines)} entries to {plain_path.name}")
-
-# ---------------------------------------------------------------------------
 # Write to energy_data_structured.jsonl (structured format)
 # ---------------------------------------------------------------------------
 def make_structured_completion(e: dict) -> str:
@@ -390,6 +378,5 @@ print(f"[+] Appended {len(structured_lines)} entries to {structured_path.name}")
 # ---------------------------------------------------------------------------
 # Verify
 # ---------------------------------------------------------------------------
-plain_count  = sum(1 for line in open(plain_path,      encoding="utf-8") if line.strip())
 struct_count = sum(1 for line in open(structured_path, encoding="utf-8") if line.strip())
-print(f"\nTotal lines — plain: {plain_count}, structured: {struct_count}")
+print(f"\nTotal lines — structured: {struct_count}")
