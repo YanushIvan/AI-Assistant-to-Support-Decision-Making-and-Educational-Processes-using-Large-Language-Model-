@@ -5,6 +5,54 @@
 
 Táto kapitola opisuje implementačnú realizáciu tréningovej fázy doménovej adaptácie modelov. Ťažisko je na konkrétnej konfigurácii tréningu a modelovo špecifických technických úpravách, ktoré boli nevyhnutné pre stabilné doučenie a následnú preferenčnú kalibráciu.
 
+\section{Výber východiskového modelu}
+
+Pri iniciálnej fáze projektu bolo potrebné identifikovať vhodný základný model pre doménovú adaptáciu v oblasti energetiky. Hlavnými kritériami výberu bola veľkosť modelu, dostupnosť a možnosť lokálneho nasadenia bez nutnosti využívania cloudových služieb alebo licencovaných proprietárnych API.
+
+Ako prvý kandidát bol zvolený model \textbf{Phi-3 Mini (3.8B)} od spoločnosti Microsoft. Tento model spĺňal všetky požiadavky: patrí do kategórie malých jazykových modelov (SLM), ktoré sú výpočtovo menej náročné ako veľké všeobecné modely, je dostupný pod otvorenou licenciou a jeho architektúra je optimalizovaná pre efektívne spracovanie inštrukcií. Model Phi-3 Mini je široko používaný v akademickom a výskumnom prostredí práve vďaka svojej dostupnosti a možnosti spustenia na bežnom spotrebiteľskom hardvéri.
+
+Okrem popularity modelu rozhodli o jeho výbere aj technické charakteristiky: model je dodávaný v inštrukčnej verzii (\texttt{microsoft/Phi-3-mini-4k-instruct}), čo zodpovedá požiadavkám na konverzačného asistenta, a je natívne kompatibilný s ekosystémom knižníc \texttt{transformers}, \texttt{peft} a \texttt{trl}, čo uľahčuje implementáciu QLoRA adaptácie.
+
+\section{Tvorba tréningového datasetu}
+
+Po výbere modelu nasledovala fáza tvorby špecializovaného datasetu pre oblasť energetiky v Európe. Keďže verejne dostupné datasety pre túto doménu buď neexistovali, alebo neboli vhodne štruktúrované pre inštrukčný tréning, bolo potrebné pristúpiť k manuálnej tvorbe dátovej bázy.
+
+\subsection{Proces získavania zdrojového obsahu}
+
+Východiskovým materiálom boli odborné články, technické dokumenty a webové zdroje zamerané na európsku energetiku, obnoviteľné zdroje energie, trhovú reguláciu, emisné ciele EÚ a technické štandardy v sektore. Tieto zdroje boli vyberané na základe ich relevantnosti, faktickej presnosti a pokrytia rôznych aspektov energetickej problematiky.
+
+Zozbieraný textový materiál slúžil ako znalostná základňa, z ktorej mali byť následne odvodené tréningové príklady vo formáte inštrukcia-odpoveď. Kľúčovým problémom pri tomto kroku bola potreba transformácie kontinuálneho odborného textu do diskrétnych a dobre štruktúrovaných príkladov vhodných pre supervised fine-tuning (SFT).
+
+\subsection{Metóda generovania tréningových príkladov}
+
+Pre transformáciu zdrojového obsahu do tréningových vzoriek bol použitý veľký všeobecný jazykový model \textbf{Gemini} od spoločnosti Google. Proces prebiehal nasledovne:
+
+\begin{enumerate}
+    \item Konkrétny odborný text alebo úsek článku bol predložený modelu Gemini.
+    \item Gemini dostal inštrukciu vytvoriť zo zdrojového textu sériu relevantných otázok a zodpovedajúcich odpovedí, ktoré zachovávajú faktickú presnosť, udržiavajú konzistentnú štruktúru a sú formulované v doménovom štýle.
+    \item Vygenerované príklady boli uložené v štruktúrovanom formáte \texttt{prompt/completion}.
+\end{enumerate}
+
+Výhodou tohto prístupu bola možnosť rýchleho skalovania obsahu pri zachovaní jednotnej metodológie. Veľké modely ako Gemini majú schopnosť produkovať kvalitné inštrukčné príklady, ktoré by inak vyžadovali prácu expertov s doménovými znalosťami.
+
+\subsection{Iteratívne zlepšovanie datasetu}
+
+Tvorba datasetu nebola jednorazovou akciou, ale iteratívnym procesom, v ktorom sa postupne zvyšoval rozsah aj kvalita tréningových vzoriek. V počiatočných fázach mal dataset niekoľko desiatok príkladov, čo bolo nedostatočné pre doménovú adaptáciu. Postupným pridávaním nových zdrojových textov, ich spracovaním a generovaním inštrukcií sa dataset rozrástol na viac ako tisíc záznamov.
+
+Paralelne s kvantitatívnym rastom dochádzalo aj ku kvalitatívnemu zlepšovaniu:
+\begin{itemize}
+    \item spresnila sa formulácia odpovedí tak, aby korešpondovali s požiadavkami na formát (\texttt{ANSWER}, \texttt{KEY FACTS}, \texttt{RISK LEVEL}, \texttt{CONFIDENCE}),
+    \item rozšíril sa tematický záber otázok o nové energetické témy a praktické scenáre,
+    \item znížil sa podiel príliš všeobecných alebo redundantných príkladov,
+    \item zlepšila sa faktická presnosť odpovedí vďaka užšiemu výberu zdrojového obsahu.
+\end{itemize}
+
+Výsledkom tejto fázy boli dva hlavné datasety:
+\begin{itemize}
+    \item \texttt{energy\_data\_structured.jsonl} (1159 záznamov) -- určený pre SFT tréning s dôrazom na konzistentnú štruktúru odpovede,
+    \item \texttt{energy\_data\_dpo.jsonl} (1126 záznamov) -- určený pre preferenčnú optimalizáciu vo formáte \texttt{prompt/chosen/rejected}.
+\end{itemize}
+
 \section{Konfigurácia tréningu}
 
 \subsection{Spoločné parametre pipeline}
