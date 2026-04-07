@@ -3,15 +3,7 @@
 \chapter{Implementácia}
 \label{ch:implementation}
 
-Táto kapitola opisuje implementačnú realizáciu tréningovej fázy doménovej adaptácie modelov. Ťažisko je na konkrétnej konfigurácii tréningu a modelovo špecifických technických úpravách, ktoré boli nevyhnutné pre stabilné doučenie a následnú preferenčnú kalibráciu.
-
-\section{Výber východiskového modelu}
-
-Pri iniciálnej fáze projektu bolo potrebné identifikovať vhodný základný model pre doménovú adaptáciu v oblasti energetiky. Hlavnými kritériami výberu bola veľkosť modelu, dostupnosť a možnosť lokálneho nasadenia bez nutnosti využívania cloudových služieb alebo licencovaných proprietárnych API.
-
-Ako prvý kandidát bol zvolený model \textbf{Phi-3 Mini (3.8B)} od spoločnosti Microsoft. Tento model spĺňal všetky požiadavky: patrí do kategórie malých jazykových modelov (SLM), ktoré sú výpočtovo menej náročné ako veľké všeobecné modely, je dostupný pod otvorenou licenciou a jeho architektúra je optimalizovaná pre efektívne spracovanie inštrukcií. Model Phi-3 Mini je široko používaný v akademickom a výskumnom prostredí práve vďaka svojej dostupnosti a možnosti spustenia na bežnom spotrebiteľskom hardvéri.
-
-Okrem popularity modelu rozhodli o jeho výbere aj technické charakteristiky: model je dodávaný v inštrukčnej verzii (\texttt{microsoft/Phi-3-mini-4k-instruct}), čo zodpovedá požiadavkám na konverzačného asistenta, a je natívne kompatibilný s ekosystémom knižníc \texttt{transformers}, \texttt{peft} a \texttt{trl}, čo uľahčuje implementáciu QLoRA adaptácie.
+Táto kapitola opisuje implementačnú realizáciu tréningovej fázy doménovej adaptácie modelov. Ťažisko je na podrobnom popise tréningových skriptov, ich štruktúre, konfiguračných súborov a evaluačného systému, ktorý umožňuje porovnávanie výkonu jednotlivých modelov.
 
 \section{Tvorba tréningového datasetu}
 
@@ -53,81 +45,349 @@ Výsledkom tejto fázy boli dva hlavné datasety:
     \item \texttt{energy\_data\_dpo.jsonl} (1126 záznamov) -- určený pre preferenčnú optimalizáciu vo formáte \texttt{prompt/chosen/rejected}.
 \end{itemize}
 
-\section{Konfigurácia tréningu}
+\section{Architektúra tréningového systému}
 
-\subsection{Spoločné parametre pipeline}
+Tréningový systém projektu je organizovaný do modulárnej štruktúry, kde každý model (Phi-3, Gemma-3, Qwen3) má vlastný adresár v \texttt{training/}, obsahujúci konfiguračný súbor \texttt{config.py} a hlavný tréningový skript \texttt{train.py}. Táto architektúra umožňuje nezávislé experimentovanie s hyperparametrami pre jednotlivé modely pri zachovaní spoločnej logiky pre načítanie dát a inicializáciu tréningu.
 
-Pre všetky modely je implementovaný spoločný SFT postup:
+\subsection{Zdieľaná dátová pipeline}
+
+Súčasťou implementácie je modul \texttt{training/shared/data\_loader.py}, ktorý zabezpečuje jednotné spracovanie dát pre všetky modely. Jeho hlavnou funkciou je:
 \begin{itemize}
-    \item tréningový framework: \texttt{TRL SFTTrainer},
-    \item dátový formát: JSONL \texttt{prompt/completion},
-    \item dĺžka sekvencie: \texttt{max\_seq\_length = 1024},
-    \item kvantizácia: \texttt{load\_in\_4bit=True}, typ \texttt{nf4},
-    \item optimalizátor: \texttt{paged\_adamw\_8bit},
-    \item zapnutý \texttt{gradient\_checkpointing},
-    \item uloženie výsledku: adaptér do adresára \texttt{final\_adapter} po ukončení tréningu.
+    \item načítanie datasetu vo formáte JSONL (\texttt{prompt/completion}),
+    \item aplikácia chat template cez tokenizer, ktorá vloží systémový prompt a formátuje vstup do správnej konverzačnej štruktúry,
+    \item tokenizácia a príprava datasetu pre \texttt{SFTTrainer},
+    \item rozdelenie dát na tréningovú a validačnú množinu podľa špecifikovaného pomeru.
 \end{itemize}
 
-Súčasťou pipeline je aj jednotný systémový prompt, ktorý definuje požadovanú štruktúru a kvalitu odpovede (stručnosť, faktickosť, práca s číselnými údajmi, risk a confidence).
+Tento prístup eliminuje duplikáciu kódu a zaisťuje, že všetky tri modely pracujú s identicky spracovanými dátami, čo je kľúčové pre objektívne porovnávanie výsledkov.
 
-\subsection{Hyperparametre podľa modelov}
+\subsection{Konfiguračné súbory modelov}
 
-\textbf{Phi-3 Mini (SFT)}
+Každý z troch modelov (Phi-3, Gemma-3, Qwen3) má vlastný \texttt{config.py}, ktorý definuje všetky parametre potrebné pre jeho tréning. Tento dizajn umožňuje:
 \begin{itemize}
-    \item počet epoch: \texttt{10},
-    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
-    \item \texttt{gradient\_accumulation\_steps}: \texttt{16};
-    \item learning rate: \texttt{2e-4};
-    \item \texttt{test\_size}: \texttt{0.01};
-    \item compute dtype: \texttt{bfloat16};
-    \item LoRA: \texttt{r=64}, \texttt{alpha=128}, \texttt{target\_modules=[qkv\_proj, o\_proj, gate\_up\_proj, down\_proj]};
-    \item \texttt{warmup\_ratio=0.03}, \texttt{weight\_decay=0.01}.
+    \item centralizovanú správu hyperparametrov na jednom mieste,
+    \item rýchle experimentovanie s rôznymi nastaveniami bez zásahov do hlavného tréningového kódu,
+    \item reprodukovateľnosť experimentov — všetky použité parametre sú explicitne dokumentované v kóde.
 \end{itemize}
 
-\textbf{Gemma 3 4B (SFT)}
+Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
+
+\textbf{Cesty k zdrojom:}
 \begin{itemize}
-    \item počet epoch: \texttt{3},
-    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
-    \item \texttt{gradient\_accumulation\_steps}: \texttt{8};
-    \item learning rate: \texttt{2e-4};
-    \item \texttt{test\_size}: \texttt{0.05};
-    \item compute dtype: \texttt{bfloat16};
-    \item \texttt{bnb\_4bit\_use\_double\_quant=True};
-    \item LoRA: \texttt{r=16}, \texttt{alpha=32}, \texttt{target\_modules=[q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj]};
-    \item \texttt{max\_grad\_norm=0.3}, \texttt{warmup\_steps=10}, \texttt{lr\_scheduler\_type=constant}.
+    \item \texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,
+    \item \texttt{DATASET\_PATH} — cesta k tréningovému datasetu,
+    \item \texttt{OUTPUT\_DIR} — adresár pre uloženie výsledného adaptéra.
 \end{itemize}
 
-\textbf{Qwen3 4B (SFT)}
+\textbf{Hyperparametre tréningu:}
 \begin{itemize}
-    \item počet epoch: \texttt{3},
-    \item \texttt{per\_device\_train\_batch\_size}: \texttt{1};
-    \item \texttt{gradient\_accumulation\_steps}: \texttt{16};
-    \item learning rate: \texttt{2e-4};
-    \item \texttt{test\_size}: \texttt{0.01};
-    \item compute dtype: \texttt{bfloat16};
-    \item LoRA: \texttt{r=16}, \texttt{alpha=32}, \texttt{target\_modules=[q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj]};
-    \item \texttt{warmup\_ratio=0.03}, \texttt{weight\_decay=0.01}.
+    \item \texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,
+    \item \texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,
+    \item \texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,
+    \item \texttt{LEARNING\_RATE} — miera učenia,
+    \item \texttt{MAX\_SEQ\_LENGTH} — maximálna dĺžka vstupnej sekvencie,
+    \item \texttt{TEST\_SIZE} — podiel validačných dát.
 \end{itemize}
 
-\subsection{Modelovo špecifické implementačné detaily}
+\textbf{Systémový prompt:}
+Každý konfiguračný súbor obsahuje aj \texttt{SYSTEM\_PROMPT}, ktorý definuje požadovanú štruktúru odpovede modelu. Tento prompt inštruuje model, aby vždy odpovedal v jasnej štruktúre obsahujúcej priamy odpoveď, kľúčové fakty s číselnými údajmi, hodnotenie úrovne rizika a míru istoty (confidence). Tento prístup zabezpečuje konzistentný výstup vhodný pre použitie v rozhodovacích procesoch.
 
-Okrem hyperparametrov obsahuje pipeline aj niekoľko technických úprav potrebných pre stabilný tréning:
+\textbf{Kvantizačná konfigurácia:}
 \begin{itemize}
-    \item \textbf{Gemma 3 4B:} pred tréningom je aplikovaný patch metódy \texttt{forward}, ktorý pri text-only batchoch dopĺňa \texttt{token\_type\_ids}. Bez tejto úpravy môže multimodálny model zlyhať na čisto textovom vstupe.
-    \item \textbf{Gemma 3 4B:} v \texttt{SFTTrainer} sa explicitne používa \texttt{processing\_class=tokenizer}, aby sa obišla automatická voľba multimodálneho procesora.
-    \item \textbf{Qwen3 4B:} počas inferencie je \texttt{enable\_thinking=False}, aby výstup neobsahoval interné \enquote{thinking} bloky a bol konzistentný s požadovaným formátom odpovede.
+    \item \texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,
+    \item \texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),
+    \item \texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),
+    \item \texttt{USE\_DOUBLE\_QUANT} — dvojitá kvantizácia (len pre Gemma-3).
 \end{itemize}
 
-\subsection{Dodatočná fáza DPO}
+Použitie 4-bitovej kvantizácie vo formáte NF4 je kľúčovým riešením, ktoré umožňuje tréning modelov s miliardami parametrov na spotrebiteľskom hardvéri. Bfloat16 bol zvolený ako compute dtype pre jeho širokú hardvérovú podporu na moderných GPU a lepšiu numerickú stabilitu v porovnaní s float16.
 
-V projekte sa po SFT používa aj dodatočná preference-optimalizácia (DPO) pre všetky tri modely (Phi-3, Gemma 3 a Qwen3):
+\textbf{LoRA konfigurácia:}
+Pre každý model je definovaný objekt \texttt{LORA\_CONFIG} (z knižnice \texttt{peft}), ktorý špecifikuje:
 \begin{itemize}
-    \item inicializácia policy modelu zo SFT adaptéra,
-    \item referenčný model je odvodený z rovnakého SFT checkpointu,
-    \item tréning prebieha na preference datasete vo formáte \texttt{prompt/chosen/rejected},
-    \item typická konfigurácia v projekte: \texttt{beta=0.1}, \texttt{epochs=1}, \texttt{learning\_rate=5e-5}, \texttt{gradient\_accumulation\_steps=8}, \texttt{max\_length=1024}, \texttt{max\_prompt\_length=512}, \texttt{eval\_ratio=0.02}.
+    \item \texttt{r} — hodnosť LoRA matíc (rank),
+    \item \texttt{lora\_alpha} — škálovací faktor,
+    \item \texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,
+    \item \texttt{bias} — spracovanie bias parametrov,
+    \item \texttt{task\_type} — typ úlohy (CAUSAL\_LM).
 \end{itemize}
 
-Táto fáza nenahrádza SFT, ale slúži ako mechanizmus dodatočnej kalibrácie preferencií modelu medzi \enquote{lepšou} a \enquote{horšou} odpoveďou na rovnaký vstup.
+Voľba target modulov sa líši medzi modelmi. Phi-3 používa špecifické moduly ako \texttt{qkv\_proj} (zlúčená attention projekcia) a \texttt{gate\_up\_proj} (zlúčená MLP projekcia), zatiaľ čo Gemma-3 a Qwen3 používajú štandardné samostatné projekčné vrstvy (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}). Tento rozdiel vyplýva z rozdielnej architektúry jednotlivých modelov.
 
-Implementačne je DPO realizované nasledovne: pre referenčný aj policy model sa najprv načíta kvantizovaná báza modelu, následne sa zlúči SFT adaptér (\texttt{merge\_and\_unload}) a na policy vetvu sa opätovne aplikuje LoRA. Tento postup zodpovedá praxi, kde DPO jemne dolaďuje preferencie už doménovo adaptovaného modelu namiesto tréningu od nuly.
+\subsection{Hyperparametrická optimalizácia jednotlivých modelov}
+
+Hodnoty hyperparametrov boli pre každý model zvolené na základe kombinácie empirického testovania, odporúčaní z dokumentácie modelov a obmedzení dostupného hardvéru.
+
+\textbf{Phi-3 Mini:}
+\begin{itemize}
+    \item epochy: \texttt{10} — vyšší počet epoch kompenzuje menšiu veľkosť modelu,
+    \item gradient accumulation: \texttt{16} — efektívny batch size 16 pri zachovaní nízkej VRAM spotreby,
+    \item LoRA rank: \texttt{r=64}, \texttt{alpha=128} — vyššia kapacita adaptéra pre lepšiu doménovú špecializáciu,
+    \item test size: \texttt{0.01} — malá validačná množina kvôli menšiemu datasetu.
+\end{itemize}
+
+Vyššie hodnoty LoRA ranku a viac epoch boli zvolené preto, že Phi-3 má najmenší počet parametrov spomedzi testovaných modelov a potrebuje viac tréningových krokov na dosiahnutie porovnateľnej úrovne doménovej adaptácie.
+
+\textbf{Gemma-3 4B:}
+\begin{itemize}
+    \item epochy: \texttt{3} — postačujúce pre väčší model,
+    \item gradient accumulation: \texttt{8} — nižšia akumulácia pre rýchlejšie experimenty,
+    \item LoRA rank: \texttt{r=16}, \texttt{alpha=32} — štandardné hodnoty pre 4B model,
+    \item test size: \texttt{0.05} — väčšia validačná množina pre robustnejšie vyhodnotenie,
+    \item double quantization: \texttt{True} — dodatočná redukcia VRAM spotreby.
+\end{itemize}
+
+Gemma-3 ako multimodálny model vyžaduje dvojitú kvantizáciu pre stabilný tréning na dostupnom hardvéri. Nižší počet epoch je možný vďaka väčšej kapacite modelu.
+
+\textbf{Qwen3 4B:}
+\begin{itemize}
+    \item epochy: \texttt{3},
+    \item gradient accumulation: \texttt{16} — vyššia akumulácia pre stabilnejší tréning,
+    \item LoRA rank: \texttt{r=16}, \texttt{alpha=32},
+    \item test size: \texttt{0.01}.
+\end{itemize}
+
+Qwen3 používa konzervatívnejšie nastavenia s vyššou akumuláciou gradientov, čo pomáha stabilite tréningu pri zachovaní efektívnej VRAM využitia.
+
+\subsection{Implementácia tréningového skriptu}
+
+Každý \texttt{train.py} skript následuje jednotnú štruktúru:
+
+\begin{enumerate}
+    \item \textbf{Import konfigurácie:} Načítanie všetkých parametrov z \texttt{config.py}.
+    
+    \item \textbf{Načítanie dát:} Zavolanie zdieľanej funkcie \texttt{load\_and\_prepare\_data()}, ktorá vráti tréningovú a validačnú množinu spolu s tokenizerom.
+    
+    \item \textbf{Kvantizačná konfigurácia:} Vytvorenie objektu \texttt{BitsAndBytesConfig} s parametrami pre 4-bitové načítanie modelu.
+    
+    \item \textbf{Načítanie modelu:} Použitie \texttt{AutoModelForCausalLM.from\_pretrained()} s kvantizačnou konfiguráciou, \texttt{device\_map="auto"} pre automatickú distribúciu na dostupné GPU, a \texttt{trust\_remote\_code=True} pre modely, ktoré to vyžadujú.
+    
+    \item \textbf{Príprava pre QLoRA:} Aktivácia \texttt{gradient\_checkpointing\_enable()} pre úsporu pamäte a aplikácia \texttt{prepare\_model\_for\_kbit\_training()} pre prípravu kvantizovaného modelu na tréning s LoRA.
+    
+    \item \textbf{Konfigurácia tréningu:} Vytvorenie objektu \texttt{TrainingArguments} s hyperparametrami, optimalizátorom \texttt{paged\_adamw\_8bit} (optimalizovaný pre kvantizované modely), a nastavením presnosti (bf16).
+    
+    \item \textbf{Inicializácia trainera:} Vytvorenie \texttt{SFTTrainer} inštancie s modelom, tréningovými argumentami, datasetmi a LoRA konfiguráciou.
+    
+    \item \textbf{Tréning:} Spustenie \texttt{trainer.train()}.
+    
+    \item \textbf{Uloženie výsledku:} Uloženie natrénovaného LoRA adaptéra do adresára \texttt{final\_adapter} pomocou \texttt{save\_pretrained()}.
+\end{enumerate}
+
+Použitie \texttt{SFTTrainer} z knižnice TRL (Transformer Reinforcement Learning) bolo zvolené pre jeho natívnu podporu supervised fine-tuning s PEFT (Parameter-Efficient Fine-Tuning) adaptérmi. Táto knižnica automatizuje správne nastavenie loss funkcie, gradient accumulation a logovanie metrík, čo redukuje riziko implementačných chýb.
+
+\section{Direct Preference Optimization (DPO)}
+
+Po SFT fáze nasleduje voliteľná, ale odporúčaná fáza preferenčnej optimalizácie pomocou algoritmu DPO. Táto fáza je implementovaná v skripte \texttt{scripts/train\_dpo.py}, ktorý poskytuje unifikovaný nástroj pre DPO tréning všetkých troch modelov.
+
+\subsection{Motivácia a princíp DPO}
+
+Supervised Fine-Tuning naučí model generovať odpovede v správnom formáte a s doménovo relevantným obsahom, no nedokáže explicitne naučiť model preferovať kvalitatívne lepšie odpovede pred horšími. Direct Preference Optimization rieši tento problém tým, že model trénuje na pároch odpovedí \texttt{(prompt, chosen, rejected)}, kde \texttt{chosen} predstavuje preferovanú odpoveď a \texttt{rejected} nepreferovanú odpoveď na rovnakú otázku.
+
+DPO maximalizuje pravdepodobnosť preferovaných odpovedí relatívne k referenčnému modelu, pričom používa logaritmickú loss funkciu závislú od parametra beta, ktorý kontroluje silu regularizácie voči referenčnému modelu. Výhodou DPO oproti RLHF (Reinforcement Learning from Human Feedback) je jednoduchšia implementácia bez potreby reward modelu a PPO algoritmu.
+
+\subsection{Architektúra skriptu train\_dpo.py}
+
+Skript je navrhnutý ako command-line nástroj s vopred definovanými presetmi pre jednotlivé modely. Hlavné komponenty sú:
+
+\textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}, kde každý preset špecifikuje:
+\begin{itemize}
+    \item \texttt{base\_model\_id} — identifikátor základného modelu,
+    \item \texttt{sft\_adapter\_path} — cesta k SFT adaptéru, ktorý slúži ako východiskový bod,
+    \item \texttt{output\_dir} — adresár pre uloženie DPO adaptéra,
+    \item \texttt{compute\_dtype} — dátový typ (bfloat16),
+    \item \texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),
+    \item \texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,
+    \item \texttt{trust\_remote\_code} — či povoliť spustenie vlastného kódu modelu.
+\end{itemize}
+
+\textbf{Argument parsing:} Skript akceptuje nasledovné parametre:
+\begin{itemize}
+    \item \texttt{--model} — výber presetu (povinný parameter),
+    \item \texttt{--dataset} — cesta k DPO datasetu (default: \texttt{data/energy\_data\_dpo.jsonl}),
+    \item \texttt{--beta} — DPO regularizačný parameter (default: 0.1),
+    \item \texttt{--epochs} — počet tréningových epoch (default: 1),
+    \item \texttt{--lr} — learning rate (default: 5e-5),
+    \item hyperparametre pre batch size, gradient accumulation, max length, atď.
+\end{itemize}
+
+Voľba defaultných hodnôt je založená na osvedčených postupoch z literatúry: beta=0.1 poskytuje dostatočnú regularizáciu bez prílišného obmedzenia priestoru na zmenu, nízky learning rate 5e-5 zabraňuje destabilizácii už natrénovaného SFT modelu, a jedna epocha je často postačujúca pre preferenčnú kalibráciu.
+
+\subsection{Technická implementácia DPO tréningu}
+
+Proces DPO tréningu prebieha v niekoľkých kritických krokoch:
+
+\textbf{1. Patch pre Gemma-3:} Funkcia \texttt{maybe\_apply\_gemma\_patch()} aplikuje runtime patch na forward metódu Gemma-3 modelu. Gemma-3 je primárne multimodálny model, ktorý vo svojej forward metóde očakáva \texttt{token\_type\_ids} aj pre text-only vstupy. Patch automaticky dopĺňa nulové \texttt{token\_type\_ids}, ak chýbajú, čím zabezpečuje bezproblémový tréning na textovom datasete.
+
+\textbf{2. Načítanie a formátovanie datasetu:} Dataset je načítaný pomocou Hugging Face \texttt{datasets} knižnice a následne transformovaný pomocou funkcie \texttt{format\_for\_dpo()}, ktorá:
+\begin{itemize}
+    \item aplikuje chat template na prompt s pridaním systémového promptu,
+    \item zachová \texttt{chosen} a \texttt{rejected} odpovede v pôvodnej forme,
+    \item vytvorí trojicu (formátovaný prompt, chosen, rejected) vhodnú pre \texttt{DPOTrainer}.
+\end{itemize}
+
+Aplikácia chat template je nevyhnutná, pretože DPOTrainer očakáva už naformátovaný konverzačný kontext. Použitie \texttt{apply\_chat\_template()} zabezpečuje konzistenciu s formátom používaným počas SFT.
+
+\textbf{3. Dvojité načítanie modelu:} DPO vyžaduje dva modely — policy model (ktorý sa trénuje) a referenčný model (ktorý zostáva fixný). Implementácia postupuje nasledovne:
+\begin{itemize}
+    \item Načítanie kvantizovanej bázy modelu pomocou \texttt{BitsAndBytesConfig},
+    \item Zlúčenie SFT adaptéra s bázou pomocou \texttt{merge\_and\_unload()} — táto operácia vytvorí plnohodnotný model so SFT váhami,
+    \item Pre referenčný model sa proces končí tu (zostáva fixný),
+    \item Pre policy model sa aplikuje \texttt{prepare\_model\_for\_kbit\_training()} a následne nový LoRA adaptér.
+\end{itemize}
+
+Tento prístup znamená, že policy model štartuje s SFT váhami a aplikuje na ne novú LoRA vrstvu, ktorá sa trénuje pomocou DPO loss funkcie. Referenčný model reprezentuje východiskové správanie (SFT), voči ktorému sa policy model optimalizuje.
+
+\textbf{4. LoRA konfigurácia:} Pre DPO fázu sa používa štandardný LoRA rank 16 s alpha 32. Nižší rank v porovnaní s Phi-3 SFT (r=64) je vhodný, pretože DPO vykonáva iba jemnú kalibráciu, nie primárne učenie doménových znalostí.
+
+\textbf{5. DPOTrainer konfigurácia:} Objekt \texttt{DPOConfig} obsahuje:
+\begin{itemize}
+    \item štandardné tréningové parametre (epochs, batch size, learning rate),
+    \item DPO-špecifické parametre (\texttt{beta}, \texttt{max\_length}, \texttt{max\_prompt\_length}),
+    \item optimalizátor \texttt{paged\_adamw\_8bit} pre kompatibilitu s kvantizáciou,
+    \item \texttt{remove\_unused\_columns=False} — nevyhnutné pre DPO, ktoré vyžaduje všetky polia datasetu.
+\end{itemize}
+
+\textbf{6. Uloženie výsledku:} Po ukončení tréningu sa policy model (LoRA adaptér) ukladá do \texttt{final\_adapter} podadresára. Tento adaptér možno následne načítať nad SFT modelom pre inferenciu s preferenčne optimalizovaným správaním.
+
+\subsection{Použitie DPO skriptu}
+
+Typický workflow pre DPO tréning:
+\begin{verbatim}
+python scripts/train_dpo.py --model phi3
+python scripts/train_dpo.py --model gemma3 --beta 0.15 --epochs 2
+python scripts/train_dpo.py --model qwen3 --check-only
+\end{verbatim}
+
+Parameter \texttt{--check-only} umožňuje validáciu ciest k datasetom a adaptérom bez skutočného načítania modelov, čo je užitočné pre rýchlu kontrolu konfigurácie.
+
+\section{Evaluácia modelov}
+
+Evaluačný systém je implementovaný v súbore \texttt{scripts/evaluate\_models.py}, ktorý poskytuje komplexné porovnanie základných a fine-tuned verzií všetkých troch modelov naprieč viacerými metrikami.
+
+\subsection{Motivácia a dizajn evaluačného systému}
+
+Objektívne vyhodnotenie kvality doménovej adaptácie vyžaduje multidimenzionálny prístup zahŕňajúci:
+\begin{itemize}
+    \item kvalitatívne metriky (relevantnosť, koherenciu, faktickú presnosť),
+    \item výkonnostné metriky (rýchlosť generovania, latenciu),
+    \item resource metriky (VRAM spotrebu),
+    \item pravdepodobnostné metriky (perplexitu).
+\end{itemize}
+
+Evaluačný skript je navrhnutý ako samostatný nástroj, ktorý dokáže vyhodnotiť ľubovoľný subset modelov a generovať štruktúrované výstupy vo formáte vhodnom na následné štatistické spracovanie.
+
+\subsection{Štruktúra dát a metrík}
+
+Skript definuje dve hlavné dátové štruktúry:
+
+\textbf{SampleResult:} Reprezentuje výsledok generovania pre jednu otázku, obsahuje:
+\begin{itemize}
+    \item \texttt{question} — vstupná otázka,
+    \item \texttt{reference} — referenčná odpoveď z datasetu,
+    \item \texttt{response} — vygenerovaná odpoveď modelu,
+    \item \texttt{ttft\_s} — Time To First Token v sekundách,
+    \item \texttt{tps} — Tokens Per Second,
+    \item \texttt{output\_tokens} — počet vygenerovaných tokenov,
+    \item \texttt{vram\_during\_gen\_mb} — VRAM spotreba počas generovania.
+\end{itemize}
+
+\textbf{ModelMetrics:} Agregované metriky pre celý model:
+\begin{itemize}
+    \item VRAM pri načítaní modelu a rezervovaná VRAM,
+    \item priemerné hodnoty TTFT, TPS a dĺžky výstupu,
+    \item perplexita na validačnej množine,
+    \item VRAM spotreba pri rôznych dĺžkach kontextu,
+    \item G-Eval skóre (relevance, coherence, fluency, factual accuracy),
+    \item zoznam všetkých \texttt{SampleResult} objektov.
+\end{itemize}
+
+\subsection{Implementácia metrík}
+
+\textbf{Time To First Token (TTFT) a Tokens Per Second (TPS):}
+Pre presné meranie latencií sa používa \texttt{TextIteratorStreamer}, ktorý umožňuje zachytiť okamih generovania prvého tokenu nezávisle od celkového času generovania. Implementácia beží v separátnom vlákne, pričom hlavné vlákno iteruje cez streamer a zaznamenáva čas prvého chunku (TTFT). TPS sa vypočíta ako pomer počtu vygenerovaných tokenov k celkovému času generovania.
+
+Tento prístup je robustnejší ako meranie len celkového času, pretože umožňuje rozlíšiť medzi latenciou inicializácie (TTFT) a priepustnosťou (TPS), čo sú dva rôzne aspekty výkonnosti dôležité pre užívateľský zážitok.
+
+\textbf{VRAM profilovanie:}
+Funkcia \texttt{profile\_vram\_by\_context()} meria VRAM spotrebu pri rôznych dĺžkach kontextu (128, 256, 512, 1024 tokenov). Pre každú dĺžku:
+\begin{itemize}
+    \item sa vyresetuje peak memory tracking (\texttt{torch.cuda.reset\_peak\_memory\_stats()}),
+    \item vykoná sa forward pass s dummy vstupom danej dĺžky,
+    \item zaznamenáva sa peak allocated memory.
+\end{itemize}
+
+Táto metrika je relevantná pre posúdenie škálovateľnosti modelu s rastúcou dĺžkou konverzácie.
+
+\textbf{Perplexita:}
+Funkcia \texttt{compute\_perplexity()} vypočítava perplexitu na validačných vzorkách s maskovaním prompt tokenov. Implementácia:
+\begin{itemize}
+    \item tokenizuje prompt aj completion oddelene,
+    \item vytvorí labels tensor, kde prompt tokeny sú nastavené na -100 (ignorované v loss),
+    \item vypočíta cross-entropy loss len na completion tokenoch,
+    \item perplexitu vypočíta ako exponenciál priemeru loss hodnôt.
+\end{itemize}
+
+Perplexita meria, ako dobre model predpovedá continuation textu — nižšia perplexita indikuje lepšiu schopnosť modelu modelovať distribúciu tréningových dát.
+
+\textbf{G-Eval (LLM-as-a-Judge):}
+Pre subjektívne metriky kvality (relevance, coherence, fluency, factual accuracy) sa používa externý LLM ako hodnotiteľ. Implementácia:
+\begin{itemize}
+    \item používa Claude Haiku model cez Anthropic API,
+    \item pre každú vygenerovanú odpoveď zostaví prompt s otázkou, odpoveďou a referenciou,
+    \item požiada Claude o hodnotenie na škále 1-10 pre každé kritérium,
+    \item parsuje JSON odpoveď a extrahuje skóre,
+    \item agreguje skóre cez všetky vzorky pomocou priemeru.
+\end{itemize}
+
+Použitie LLM-as-a-Judge je osvedčená technika pre hodnotenie generatívnych modelov, pretože dokáže zachytiť nuansy kvality, ktoré sú ťažko merateľné automatickými metrikami ako BLEU alebo ROUGE.
+
+\subsection{Workflow evaluácie}
+
+Hlavný evaluačný loop v funkcii \texttt{evaluate\_model()}:
+\begin{enumerate}
+    \item Načítanie modelu a tokenizeru pomocou 4-bit kvantizácie,
+    \item Zaznamenanie VRAM po načítaní,
+    \item Profilovanie VRAM pri rôznych dĺžkach kontextu,
+    \item Iterácia cez n vzoriek z test datasetu:
+    \begin{itemize}
+        \item formátovanie otázky pomocou chat template,
+        \item generovanie odpovede s meraním TTFT a TPS,
+        \item uloženie výsledku do \texttt{SampleResult},
+    \end{itemize}
+    \item Výpočet perplexity na väčšej podmnožine test dát,
+    \item Agregácia metrík do \texttt{ModelMetrics},
+    \item Voliteľné spustenie G-Eval hodnotenia, ak je dostupné API,
+    \item Uvoľnenie modelu z pamäte.
+\end{enumerate}
+
+\subsection{Výstup a použitie}
+
+Skript generuje:
+\begin{itemize}
+    \item Konzolový výpis s priebežnými metrikami,
+    \item CSV súbor s agregovanými metrikami (\texttt{summary.csv}),
+    \item JSON súbory s detailnými výsledkami pre každý model,
+    \item Porovnávacie tabuľky zobrazujúce relatívne zlepšenie fine-tuned verzií.
+\end{itemize}
+
+Typické použitie:
+\begin{verbatim}
+python scripts/evaluate_models.py --n-samples 50 --judge
+python scripts/evaluate_models.py --models phi-3-base phi-3-ft
+\end{verbatim}
+
+Parameter \texttt{--judge} aktivuje G-Eval hodnotenie (vyžaduje \texttt{ANTHROPIC\_API\_KEY}), \texttt{--models} umožňuje selektívne testovanie.
+
+\subsection{Dizajnové rozhodnutia}
+
+\textbf{Prečo 4-bit kvantizácia aj v evaluácii:}
+Všetky modely sú evaluované s rovnakou 4-bit kvantizáciou, aká sa používa v tréningu. Toto zaisťuje konzistentnosť a objektívnosť — výsledky reflektujú reálne nasadenie, nie idealizovaný scenár s plnou presnosťou.
+
+\textbf{Prečo bez systémového promptu v baseline porovnaní:}
+Funkcia \texttt{format\_messages()} aplikuje len user prompt bez systémového promptu. Toto umožňuje vyhodnotiť, do akej miery boli doménové znalosti a štruktúra odpovede internalizované do váh modelu počas fine-tuningu, namiesto toho, aby boli dodané cez prompt.
+
+\textbf{Prečo TextIteratorStreamer:}
+Použitie streamera namiesto jednoduchého \texttt{model.generate()} umožňuje presné meranie TTFT, čo je kritická metrika pre interaktívne aplikácie. Prvý token určuje, kedy užívateľ začne vidieť odpoveď.
+
+\textbf{Prečo Claude Haiku pre G-Eval:}
+Claude Haiku poskytuje dobrý pomer kvality hodnotenia a nákladov. Je dostatočne schopný na objektívne hodnotenie, no lacnejší a rýchlejší ako väčšie modely ako Sonnet či Opus.
