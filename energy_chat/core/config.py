@@ -28,9 +28,9 @@ class Settings:
         adapters = os.path.join(workspace_root, "adapters")
         return {
             "phi-3": {
-                "name": "Phi-3 Mini (Energy)",
+                "name": "Phi-3 Mini (Energy DPO)",
                 "model_id": "microsoft/Phi-3-mini-4k-instruct",
-                "adapter_path": os.path.join(workspace_root, "phi3_mini_energy_finetune_structured", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "phi3_mini_energy_dpo", "final_adapter")
             },
             "phi-3-base": {
                 "name": "Phi-3 Mini (Vanilla)",
@@ -43,14 +43,14 @@ class Settings:
                 "adapter_path": None
             },
             "qwen-3": {
-                "name": "Qwen3 4B (Energy)",
+                "name": "Qwen3 4B (Energy DPO)",
                 "model_id": "Qwen/Qwen3-4B-Instruct-2507",
-                "adapter_path": os.path.join(workspace_root, "qwen3_4b_energy_finetune_structured", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "qwen3_4b_energy_dpo", "final_adapter")
             },
             "gemma-3": {
-                "name": "Gemma 3 4B (Energy)",
+                "name": "Gemma 3 4B (Energy DPO)",
                 "model_id": "google/gemma-3-4b-it",
-                "adapter_path": os.path.join(workspace_root, "gemma3_4b_energy_finetune_structured", "final_adapter")
+                "adapter_path": os.path.join(workspace_root, "gemma3_4b_energy_dpo", "final_adapter")
             }
         }
 
@@ -61,7 +61,7 @@ class Settings:
         current_dir = os.path.dirname(os.path.abspath(__file__))  # energy_chat/core
         energy_chat_dir = os.path.dirname(current_dir)  # energy_chat
         workspace_root = os.path.dirname(energy_chat_dir)  # workspace root
-        return os.path.join(workspace_root, "phi3_mini_energy_finetune", "final_adapter")
+        return os.path.join(workspace_root, "phi3_mini_energy_dpo", "final_adapter")
     
     # Training Parameters
     MAX_SEQ_LENGTH: int = 1024

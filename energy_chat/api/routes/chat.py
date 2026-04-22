@@ -60,9 +60,14 @@ async def answer_prompt(request: ChatRequest) -> ChatResponse:
     
     try:
         # Build messages
-        messages = [
-            {"role": "system", "content": model_service.settings.SYSTEM_PROMPT}
-        ]
+        messages = []
+        if model_service.should_use_system_prompt:
+            messages.append(
+                {"role": "system", "content": model_service.settings.SYSTEM_PROMPT}
+            )
+            logger.info("System prompt enabled for adapter-based model")
+        else:
+            logger.info("System prompt disabled for vanilla/base model")
         
         # Add history if provided
         for msg in request.history:

@@ -91,13 +91,23 @@ MODELS_CONFIG: Dict[str, Dict[str, Any]] = {
 # Context lengths (tokens) to probe for VRAM scaling
 VRAM_PROBE_LENGTHS = [128, 256, 512, 1024]
 
-# Generation settings (no system prompt — raw model comparison)
+# Generation settings (base models are vanilla; fine-tuned models keep system prompt)
 GEN_CONFIG = dict(
     max_new_tokens=1024,
     do_sample=True,
     temperature=0.7,
     top_k=50,
     top_p=0.95,
+)
+
+SYSTEM_PROMPT = (
+    "You are a highly knowledgeable expert on energy, climate, and financial markets. "
+    "Always respond in the following structured format:\n\n"
+    "ANSWER: <one-sentence direct answer>\n\n"
+    "KEY FACTS:\n• <specific fact with data>\n• <specific fact with data>\n• <specific fact with data>\n\n"
+    "RISK LEVEL: Low / Medium / High\n→ <one-sentence explanation>\n\n"
+    "CONFIDENCE: High / Medium / Low\n→ <reason, e.g. based on IRENA 2025 data / estimated>\n\n"
+    "Be concise, technically accurate, and use specific numbers where available."
 )
 
 
@@ -199,9 +209,17 @@ def clean_response(text: str) -> str:
     return text.strip()
 
 
-def format_messages(question: str, tokenizer, is_qwen3: bool) -> str:
-    """Apply chat template without system prompt (bare model comparison)."""
-    messages = [{"role": "user", "content": question}]
+def format_messages(
+    question: str,
+    tokenizer,
+    is_qwen3: bool,
+    use_system_prompt: bool,
+) -> str:
+    """Apply chat template; keep base models vanilla and guided prompts for tuned models."""
+    messages = []
+    if use_system_prompt:
+        messages.append({"role": "system", "content": SYSTEM_PROMPT})
+    messages.append({"role": "user", "content": question})
     kwargs = dict(tokenize=False, add_generation_prompt=True)
     if is_qwen3:
         kwargs["enable_thinking"] = False
@@ -600,7 +618,12 @@ def evaluate_model(
         reference = sample["completion"]
         log(f"  Sample {i+1}/{len(test_samples)}: {question[:60]}...")
 
-        prompt_text = format_messages(question, tokenizer, cfg["is_qwen3"])
+        prompt_text = format_messages(
+            question,
+            tokenizer,
+            cfg["is_qwen3"],
+            use_system_prompt=bool(cfg["adapter_path"]),
+        )
         free_vram()
 
         try:

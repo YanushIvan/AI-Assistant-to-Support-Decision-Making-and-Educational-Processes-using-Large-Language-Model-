@@ -20,6 +20,7 @@ class ModelService:
         self.tokenizer: Optional[AutoTokenizer] = None
         self._is_loaded = False
         self.current_model_key: Optional[str] = None
+        self.current_model_has_adapter: bool = False
     
     def load_models(self, model_key: str = "phi-3") -> bool:
         """
@@ -45,6 +46,7 @@ class ModelService:
                 self._is_loaded = False
                 self.model = None
                 self.tokenizer = None
+                self.current_model_has_adapter = False
             
             if model_key not in self.settings.MODELS:
                 logger.error(f"Model {model_key} not found in configuration")
@@ -142,6 +144,7 @@ class ModelService:
             
             self._is_loaded = True
             self.current_model_key = model_key
+            self.current_model_has_adapter = bool(adapter_path)
             logger.info(f"✓ Model {model_key} loaded successfully")
             return True
             
@@ -244,6 +247,11 @@ class ModelService:
     def is_loaded(self) -> bool:
         """Check if models are loaded."""
         return self._is_loaded
+
+    @property
+    def should_use_system_prompt(self) -> bool:
+        """Use system prompt only for models loaded with domain adapters."""
+        return self.current_model_has_adapter
 
 
 # Global instance

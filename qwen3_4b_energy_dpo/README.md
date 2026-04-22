@@ -1,15 +1,15 @@
 ---
 base_model: Qwen/Qwen3-4B-Instruct-2507
 library_name: transformers
-model_name: qwen3_4b_energy_finetune
+model_name: qwen3_4b_energy_dpo
 tags:
 - generated_from_trainer
+- dpo
 - trl
-- sft
 licence: license
 ---
 
-# Model Card for qwen3_4b_energy_finetune
+# Model Card for qwen3_4b_energy_dpo
 
 This model is a fine-tuned version of [Qwen/Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507).
 It has been trained using [TRL](https://github.com/huggingface/trl).
@@ -30,7 +30,7 @@ print(output["generated_text"])
  
 
 
-This model was trained with SFT.
+This model was trained with DPO, a method introduced in [Direct Preference Optimization: Your Language Model is Secretly a Reward Model](https://huggingface.co/papers/2305.18290).
 
 ### Framework versions
 
@@ -42,7 +42,18 @@ This model was trained with SFT.
 
 ## Citations
 
+Cite DPO as:
 
+```bibtex
+@inproceedings{rafailov2023direct,
+    title        = {{Direct Preference Optimization: Your Language Model is Secretly a Reward Model}},
+    author       = {Rafael Rafailov and Archit Sharma and Eric Mitchell and Christopher D. Manning and Stefano Ermon and Chelsea Finn},
+    year         = 2023,
+    booktitle    = {Advances in Neural Information Processing Systems 36: Annual Conference on Neural Information Processing Systems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023},
+    url          = {http://papers.nips.cc/paper_files/paper/2023/hash/a85b405ed65c6477a4fe8302b5e06ce7-Abstract-Conference.html},
+    editor       = {Alice Oh and Tristan Naumann and Amir Globerson and Kate Saenko and Moritz Hardt and Sergey Levine},
+}
+```
 
 Cite TRL as:
     

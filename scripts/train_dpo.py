@@ -13,10 +13,13 @@ import os
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 SYSTEM_PROMPT = (
-    "You are a highly knowledgeable and witty expert on energy, climate, and financial markets. "
-    "Your answers must be concise, technically accurate, and highly informative, "
-    "providing the core analysis necessary to fully address the user's prompt in a focused manner. "
-    "Avoid unnecessary detail."
+    "You are a highly knowledgeable expert on energy, climate, and financial markets. "
+    "Always respond in the following structured format:\n\n"
+    "ANSWER: <one-sentence direct answer>\n\n"
+    "KEY FACTS:\n• <specific fact with data>\n• <specific fact with data>\n• <specific fact with data>\n\n"
+    "RISK LEVEL: Low / Medium / High\n→ <one-sentence explanation>\n\n"
+    "CONFIDENCE: High / Medium / Low\n→ <reason, e.g. based on IRENA 2025 data / estimated>\n\n"
+    "Be concise, technically accurate, and use specific numbers where available."
 )
 
 MODEL_PRESETS = {
@@ -26,7 +29,7 @@ MODEL_PRESETS = {
         "output_dir": os.path.join(_ROOT, "phi3_mini_energy_dpo"),
         "compute_dtype": "bfloat16",
         "use_double_quant": False,
-        "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "target_modules": ["qkv_proj", "o_proj", "gate_up_proj", "down_proj"],
         "trust_remote_code": True,
     },
     "gemma3": {
@@ -169,6 +172,11 @@ def main():
 
     print(f"Loading DPO dataset from {args.dataset}...")
     raw_dataset = load_dataset("json", data_files=args.dataset, split="train")
+    if len(raw_dataset) == 0:
+        raise ValueError(
+            "DPO dataset is empty. Expected JSONL rows with prompt/chosen/rejected. "
+            f"Got zero rows from: {args.dataset}"
+        )
     expected_cols = {"prompt", "chosen", "rejected"}
     if not expected_cols.issubset(set(raw_dataset.column_names)):
         raise ValueError(
@@ -215,6 +223,11 @@ def main():
         trust_remote_code=cfg["trust_remote_code"],
     )
     ref_model = merge_sft_adapter(ref_base, cfg["sft_adapter_path"])
+    if args.model == "gemma3":
+        # Force text-only preprocessing in TRL DPOTrainer for text-only datasets.
+        ref_model.config.model_type = "gemma3_text"
+    ref_model.eval()
+    ref_model.requires_grad_(False)
 
     print("Loading policy model...")
     policy_base = load_quantized_base(
@@ -233,6 +246,9 @@ def main():
         task_type="CAUSAL_LM",
     )
     policy_model = get_peft_model(policy_merged, lora_config)
+    if args.model == "gemma3":
+        # Gemma-3 is multimodal, but this DPO dataset has no images column.
+        policy_model.config.model_type = "gemma3_text"
     policy_model.print_trainable_parameters()
 
     dpo_config = DPOConfig(
@@ -263,7 +279,7 @@ def main():
         args=dpo_config,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     print("\n=== Starting DPO training ===")
