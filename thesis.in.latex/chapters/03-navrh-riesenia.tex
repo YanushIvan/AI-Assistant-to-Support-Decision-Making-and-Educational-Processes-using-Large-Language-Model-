@@ -124,6 +124,8 @@ Výhodou tohto riešenia je jednotná metodika spracovania dát naprieč modelmi
 
 \section{Metodológia SFT a DPO}
 
+Táto časť nadväzuje na opis dátovej vrstvy a formálne špecifikuje učebný postup použitý v experimentoch. Najprv je definovaná fáza Supervised Fine-Tuning (SFT), ktorá model ukotví v požadovanom doménovom štýle a štruktúre odpovedí, a následne fáza Direct Preference Optimization (DPO), ktorá tento základ kalibruje podľa preferencií kvality. Spolu tak tvoria dvojstupňový adaptačný rámec zameraný na faktickosť, konzistentnosť a praktickú použiteľnosť výstupov v energetických úlohách.
+
 \subsection{Supervised Fine-Tuning (SFT)}
 
 V navrhnutej pipeline predstavuje SFT prvú fázu doménovej adaptácie. Cieľom je preniesť model z~generického inštrukčného správania na špecifické požiadavky energetickej domény: terminológiu, formátovanie odpovedí a preferovaný spôsob argumentácie. Tento postup je v súlade s výsledkami InstructGPT~\cite{Ouyang2022InstructGPT}, kde sa ukazuje, že inštrukčné doučenie výrazne zlepšuje praktickú použiteľnosť modelu, ako aj so zisteniami práce FLAN~\cite{Chung2022ScalingInstruction}, ktorá demonštruje, že inštrukčné doučenie škáluje naprieč modelmi a úlohami.
