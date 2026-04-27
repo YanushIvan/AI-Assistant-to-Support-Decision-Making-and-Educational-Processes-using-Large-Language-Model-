@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive evaluation script comparing all SLMs (base vs fine-tuned).
+Comprehensive evaluation script comparing all SLMs (base vs fine-tuned vs DPO).
 
 Metrics per model:
   - G-Eval LLM-as-a-Judge: Relevance, Coherence, Fluency, Factual Accuracy (1–10)
@@ -58,6 +58,14 @@ MODELS_CONFIG: Dict[str, Dict[str, Any]] = {
         ),
         "is_qwen3": False,
     },
+    "phi-3-dpo": {
+        "name": "Phi-3 Mini 4K (DPO)",
+        "model_id": "microsoft/Phi-3-mini-4k-instruct",
+        "adapter_path": str(
+            PROJECT_ROOT / "phi3_mini_energy_dpo" / "final_adapter"
+        ),
+        "is_qwen3": False,
+    },
     "gemma-3-base": {
         "name": "Gemma 3 4B IT (Base)",
         "model_id": "google/gemma-3-4b-it",
@@ -69,6 +77,14 @@ MODELS_CONFIG: Dict[str, Dict[str, Any]] = {
         "model_id": "google/gemma-3-4b-it",
         "adapter_path": str(
             PROJECT_ROOT / "gemma3_4b_energy_finetune_structured" / "final_adapter"
+        ),
+        "is_qwen3": False,
+    },
+    "gemma-3-dpo": {
+        "name": "Gemma 3 4B IT (DPO)",
+        "model_id": "google/gemma-3-4b-it",
+        "adapter_path": str(
+            PROJECT_ROOT / "gemma3_4b_energy_dpo" / "final_adapter"
         ),
         "is_qwen3": False,
     },
@@ -86,12 +102,20 @@ MODELS_CONFIG: Dict[str, Dict[str, Any]] = {
         ),
         "is_qwen3": True,
     },
+    "qwen-3-dpo": {
+        "name": "Qwen3 4B Instruct (DPO)",
+        "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+        "adapter_path": str(
+            PROJECT_ROOT / "qwen3_4b_energy_dpo" / "final_adapter"
+        ),
+        "is_qwen3": True,
+    },
 }
 
 # Context lengths (tokens) to probe for VRAM scaling
 VRAM_PROBE_LENGTHS = [128, 256, 512, 1024]
 
-# Generation settings (base models are vanilla; fine-tuned models keep system prompt)
+# Generation settings (base models are vanilla; adapted models keep system prompt)
 GEN_CONFIG = dict(
     max_new_tokens=1024,
     do_sample=True,

@@ -1,0 +1,10 @@
+model_key,model_name,perplexity,avg_ttft_s,avg_tps,avg_output_tokens,vram_load_mb,vram_reserved_mb,relevance,coherence,fluency,factual_accuracy,vram_ctx_128,vram_ctx_256,vram_ctx_512,vram_ctx_1024
+phi-3-base,Phi-3 Mini 4K (Base),7.138,0.0827,9.41,465.3,858.3,1276.0,N/A,N/A,N/A,N/A,1062.9,1067.5,1076.9,1236.8
+phi-3-ft,Phi-3 Mini 4K (Fine-tuned),5.167,0.1141,7.63,223.4,2224.4,3636.0,N/A,N/A,N/A,N/A,2517.0,2521.6,2531.0,2594.8
+phi-3-dpo,Phi-3 Mini 4K (DPO),7.128,0.1139,7.46,250.9,3993.3,5392.0,N/A,N/A,N/A,N/A,4285.8,4290.4,4299.8,4364.5
+gemma-3-base,Gemma 3 4B IT (Base),16.807,0.0892,6.94,901.7,3314.4,8366.0,N/A,N/A,N/A,N/A,3439.1,3477.8,3640.9,3973.6
+gemma-3-ft,Gemma 3 4B IT (Fine-tuned),8.193,0.1138,7.71,232.0,3319.2,8456.0,N/A,N/A,N/A,N/A,3493.9,3519.3,3645.7,3979.8
+gemma-3-dpo,Gemma 3 4B IT (DPO),16.786,0.1132,7.62,249.5,3318.0,8352.0,N/A,N/A,N/A,N/A,3492.7,3517.5,3644.5,3978.8
+qwen-3-base,Qwen3 4B Instruct (Base),14.423,0.0829,7.72,658.6,2734.4,7522.0,N/A,N/A,N/A,N/A,2836.9,2844.9,2885.3,3036.1
+qwen-3-ft,Qwen3 4B Instruct (Fine-tuned),13.027,0.1166,7.18,265.9,2738.0,7534.0,N/A,N/A,N/A,N/A,2888.6,2897.3,2912.1,3039.8
+qwen-3-dpo,Qwen3 4B Instruct (DPO),14.361,0.1173,7.15,272.2,2735.4,7598.0,N/A,N/A,N/A,N/A,2886.8,2893.4,2910.2,3037.2
