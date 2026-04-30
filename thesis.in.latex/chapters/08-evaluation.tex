@@ -2,59 +2,105 @@
 
 \chapter{Vyhodnotenie}\label{ch:evaluation}
 
-Kapitola vyhodnocuje, do akej miery navrhnuté riešenie spĺňa ciele práce: poskytovať vecné energetické odpovede, zachovať výpočtovú efektívnosť pri obmedzenom hardvéri a umožniť praktické nasadenie vo forme konverzačného asistenta. Vyhodnotenie preto kombinuje kvalitatívne jazykové metriky, prevádzkové metriky inferencie a porovnanie základných a doučených verzií modelov.
+Kapitola sumarizuje výsledky experimentov pre tri modelové rodiny (Phi-3 Mini, Gemma 3 4B, Qwen3 4B) v troch režimoch: \emph{base}, \emph{fine-tuned} (SFT) a \emph{DPO}. Hodnotenie bolo realizované jednotným skriptom \texttt{scripts/evaluate\_models.py} s rovnakými dekódovacími parametrami a rovnakou sadou doménových otázok, aby bolo možné korektne porovnať vplyv doménového doučenia na kvalitu a praktické parametre inferencie.
 
-\section{Ciele vyhodnotenia}
+\section{Experimentálne nastavenie a metriky}
 
-Vyhodnotenie je navrhnuté tak, aby odpovedalo na tri výskumné otázky:
+Použité metriky pokrývajú kvalitu výstupov aj prevádzkovú použiteľnosť:
 \begin{itemize}
-	\item prináša doménové doučenie merateľné zlepšenie kvality odpovedí oproti základným modelom,
-	\item aké sú časové a pamäťové nároky jednotlivých modelov pri inferencii,
-	\item ktorý model predstavuje najlepší kompromis medzi kvalitou odpovede a náročnosťou nasadenia.
+    \item \textbf{G-Eval} (LLM-as-a-judge): \emph{relevance, coherence, fluency, factual accuracy},
+    \item \textbf{perplexita} na testovacích vzorkách (nižšia je lepšia),
+    \item \textbf{TTFT} a \textbf{TPS} ako latencia a priepustnosť generovania,
+    \item \textbf{VRAM} po načítaní modelu a pri kontexte 1024 tokenov.
 \end{itemize}
 
-\section{Experimentálne nastavenie}
+\section{Kvalitatívne výsledky (G-Eval)}
 
-Hodnotenie prebieha na rovnakých typoch vstupov z domény energetiky pre všetky porovnávané modely. Každá modelová rodina je testovaná v dvoch režimoch: \emph{base} (bez doménového adaptéra) a \emph{fine-tuned} (s doménovým adaptérom). Tento postup umožňuje izolovať efekt samotného doučenia.
+Tabuľka~\ref{tab:geval} uvádza priemerné G-Eval skóre pre všetky varianty.
 
-Na zabezpečenie reprodukovateľnosti bol pripravený samostatný hodnotiaci skript \texttt{scripts/evaluate\_models.py}, ktorý používa jednotné generovacie nastavenia a jednotný formát vstupných otázok. Porovnanie teda nie je ovplyvnené odlišnými dekódovacími parametrami medzi modelmi.
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lcccc}
+\hline
+Model & Relevance & Coherence & Fluency & Factual accuracy \\
+\hline
+Phi-3 Base & 8.83 & 8.71 & 9.21 & 8.54 \\
+Phi-3 SFT & 9.38 & 9.00 & 9.24 & 9.00 \\
+Phi-3 DPO & 9.32 & 9.11 & 9.21 & 9.43 \\
+Gemma-3 Base & 9.76 & 9.43 & 9.28 & 9.28 \\
+Gemma-3 SFT & 9.74 & 9.37 & 9.41 & 9.48 \\
+Gemma-3 DPO & 9.70 & 9.41 & 9.48 & 9.63 \\
+Qwen3 Base & 9.83 & 9.38 & 9.34 & 9.24 \\
+Qwen3 SFT & 9.72 & 9.38 & 9.31 & 9.53 \\
+Qwen3 DPO & 9.93 & 9.43 & 9.29 & 9.33 \\
+\hline
+\end{tabular}
+\caption{G-Eval skóre (priemery) pre jednotlivé modely.}
+\label{tab:geval}
+\end{table}
 
-\section{Použité metriky}
-
-\subsection{Kvalita odpovedí}
-
-Kvalita výstupu je hodnotená metódou \emph{LLM-as-a-judge} (G-Eval), ktorá priraďuje skóre v dimenziách:
+Z výsledkov vyplýva:
 \begin{itemize}
-	\item relevance (vecná súvislosť odpovede s otázkou),
-	\item coherence (vnútorná logická konzistentnosť),
-	\item fluency (jazyková plynulosť),
-	\item factual accuracy (faktická správnosť).
+    \item \textbf{Phi-3:} doménové SFT prináša konzistentné zlepšenie vo všetkých dimenziách; DPO ďalej zvyšuje najmä \emph{factual accuracy} (z 8.54 na 9.43).
+    \item \textbf{Gemma-3:} základný model je už veľmi silný; SFT a DPO zvyšujú plynulosť a faktickú správnosť, pričom najvyššiu \emph{factual accuracy} dosahuje Gemma-3 DPO (9.63).
+    \item \textbf{Qwen3:} DPO má najvyššiu \emph{relevance} (9.93) a mierne zlepšuje koherenciu, SFT zvyšuje \emph{factual accuracy} (9.53), ale mierne znižuje fluency.
 \end{itemize}
 
-Doplňujúco sa vyhodnocuje perplexita na testovacích vzorkách, ktorá približne vyjadruje, ako dobre model predikuje cieľový text pri doménových vstupoch.
+\section{Perplexita a stručnosť odpovedí}
 
-\subsection{Prevádzkové metriky}
+Perplexita (Tabuľka~\ref{tab:ppl}) po SFT klesá vo všetkých rodinách, čo indikuje lepšie prispôsobenie na doménový formát. DPO naopak perplexitu oproti \emph{base} takmer nemení. Výrazný je aj pokles priemernej dĺžky odpovede: všetky doučené varianty generujú podstatne kratšie odpovede, čo je v súlade s cieľom používať stručný, štruktúrovaný výstup.
 
-Pre praktické nasadenie asistenta sú sledované najmä:
-\begin{itemize}
-	\item \texttt{TTFT} (\emph{time to first token}) -- latencia prvej odozvy,
-	\item \texttt{TPS} (\emph{tokens per second}) -- priepustnosť generovania,
-	\item spotreba VRAM po načítaní modelu a pri rôznych dĺžkach kontextu.
-\end{itemize}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lcc}
+\hline
+Model & Perplexita $\downarrow$ & Priemerná dĺžka odpovede (tokeny) \\
+\hline
+Phi-3 Base & 7.138 & 465.3 \\
+Phi-3 SFT & 5.167 & 223.4 \\
+Phi-3 DPO & 7.128 & 250.9 \\
+Gemma-3 Base & 16.807 & 901.7 \\
+Gemma-3 SFT & 8.193 & 232.0 \\
+Gemma-3 DPO & 16.786 & 249.5 \\
+Qwen3 Base & 14.423 & 658.6 \\
+Qwen3 SFT & 13.027 & 265.9 \\
+Qwen3 DPO & 14.361 & 272.2 \\
+\hline
+\end{tabular}
+\caption{Perplexita a priemerná dĺžka odpovedí.}
+\label{tab:ppl}
+\end{table}
 
-Tieto metriky priamo súvisia s používateľskou skúsenosťou a určujú, či je možné riešenie reálne prevádzkovať na dostupnom hardvéri.
+\section{Prevádzkové metriky a pamäťové nároky}
 
-\section{Kritériá interpretácie výsledkov}
+Prevádzkové metriky ukazujú typický kompromis medzi kvalitou a rýchlosťou. \emph{Base} varianty majú najnižší \texttt{TTFT}, zatiaľ čo SFT/DPO mierne zvyšujú latenciu prvej odpovede a znižujú \texttt{TPS}. Výhodou je kratšia priemerná odpoveď, čo v praxi znižuje celkový čas generovania.
 
-Pri interpretácii výsledkov sa uprednostňuje medzi-modelové porovnanie trendov pred izolovanými hodnotami jednej metriky. Model je považovaný za vhodný na nasadenie, ak súčasne:
-\begin{itemize}
-	\item dosahuje stabilné zlepšenie kvalitatívnych metrík po doučení,
-	\item zachováva prijateľnú latenciu odpovede,
-	\item neprekračuje pamäťové limity cieľového hardvéru.
-\end{itemize}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lcccc}
+\hline
+Model & TTFT [s] $\downarrow$ & TPS $\uparrow$ & VRAM load [MB] & VRAM pri 1024 [MB] \\
+\hline
+Phi-3 Base & 0.0827 & 9.41 & 858.3 & 1236.8 \\
+Phi-3 SFT & 0.1141 & 7.63 & 2224.4 & 2594.8 \\
+Phi-3 DPO & 0.1139 & 7.46 & 3993.3 & 4364.5 \\
+Gemma-3 Base & 0.0892 & 6.94 & 3314.4 & 3973.6 \\
+Gemma-3 SFT & 0.1138 & 7.71 & 3319.2 & 3979.8 \\
+Gemma-3 DPO & 0.1132 & 7.62 & 3318.0 & 3978.8 \\
+Qwen3 Base & 0.0829 & 7.72 & 2734.4 & 3036.1 \\
+Qwen3 SFT & 0.1166 & 7.18 & 2738.0 & 3039.8 \\
+Qwen3 DPO & 0.1173 & 7.15 & 2735.4 & 3037.2 \\
+\hline
+\end{tabular}
+\caption{Prevádzkové metriky inferencie a pamäťové nároky.}
+\label{tab:perf}
+\end{table}
 
-Takto definovaný rámec vyhodnotenia zodpovedá cieľu práce: neoptimalizovať model iba na benchmarkové skóre, ale na praktickú použiteľnosť v doméne energetiky.
+Z pohľadu VRAM je výrazný rozdiel najmä pri Phi-3: DPO verzia vyžaduje približne 4~GB VRAM, zatiaľ čo \emph{base} len 0.86~GB. Gemma-3 a Qwen3 majú medzi režimami prakticky stabilnú pamäťovú stopu, čo zjednodušuje ich nasadenie.
 
-\section{Limity vyhodnotenia}
+\section{Zhrnutie a odporúčaný kompromis}
 
-Výsledky je potrebné interpretovať s ohľadom na limity experimentu. Najvýznamnejšími sú obmedzený rozsah doménového datasetu, závislosť automatického hodnotenia od použitého sudcovského modelu a citlivosť metriky factual accuracy na formuláciu otázky. Napriek týmto limitom poskytuje kombinácia kvalitatívnych a prevádzkových metrík dostatočný základ na porovnanie efektivity jednotlivých prístupov doučenia.
+Doménové doučenie prináša najväčší kvalitatívny prínos pri Phi-3, kde SFT a DPO výrazne zvyšujú relevanciu a faktickú správnosť. Pri Gemma-3 a Qwen3 je prínos jemnejší, ale prejavuje sa najmä v \emph{factual accuracy} a v skracovaní odpovedí. Z hľadiska kompromisu kvalita vs. náročnosť nasadenia je najvyváženejšou voľbou \textbf{Qwen3 SFT}: zachováva veľmi vysoké G-Eval skóre, zvyšuje faktickú správnosť na 9.53 a zároveň patrí k pamäťovo najúspornejším 4B modelom. Ak je prioritou maximálna faktická správnosť, najlepší výsledok poskytuje \textbf{Gemma-3 DPO} (9.63), a ak je kľúčovým obmedzením VRAM a latencia, najľahšie nasaditeľný je \textbf{Phi-3 Base}.
