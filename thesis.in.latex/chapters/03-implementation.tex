@@ -41,17 +41,17 @@ Paralelne s kvantitatívnym rastom dochádzalo aj ku kvalitatívnemu zlepšovani
 
 Výsledkom tejto fázy boli dva hlavné datasety:
 \begin{itemize}
-    \item \texttt{energy\_data\_structured.jsonl} (1159 záznamov) -- určený pre SFT tréning s dôrazom na konzistentnú štruktúru odpovede,
-    \item \texttt{energy\_data\_dpo.jsonl} (1126 záznamov) -- určený pre preferenčnú optimalizáciu vo formáte \texttt{prompt/chosen/rejected}.
+    \item štruktúrovaný tréningový dataset (1159 záznamov) určený pre SFT tréning s dôrazom na konzistentnú štruktúru odpovede,
+    \item preferenčný dataset (1126 záznamov) určený pre optimalizáciu vo formáte \texttt{prompt/chosen/rejected}.
 \end{itemize}
 
 \section{Architektúra tréningového systému}
 
-Tréningový systém projektu je organizovaný do modulárnej štruktúry, kde každý model (Phi-3, Gemma-3, Qwen3) má vlastný adresár v \texttt{training/}, obsahujúci konfiguračný súbor \texttt{config.py} a hlavný tréningový skript \texttt{train.py}. Táto architektúra umožňuje nezávislé experimentovanie s hyperparametrami pre jednotlivé modely pri zachovaní spoločnej logiky pre načítanie dát a inicializáciu tréningu.
+Tréningový systém projektu je organizovaný do modulárnej štruktúry, kde každý model (Phi-3, Gemma-3, Qwen3) má vlastnú konfiguráciu a tréningový skript. Táto architektúra umožňuje nezávislé experimentovanie s hyperparametrami pre jednotlivé modely pri zachovaní spoločnej logiky pre načítanie dát a inicializáciu tréningu.
 
 \subsection{Zdieľaná dátová pipeline}
 
-Súčasťou implementácie je modul \texttt{training/shared/data\_loader.py}, ktorý zabezpečuje jednotné spracovanie dát pre všetky modely. Jeho hlavnou funkciou je:
+Súčasťou implementácie je zdieľaný dátový loader, ktorý zabezpečuje jednotné spracovanie dát pre všetky modely. Jeho hlavnou funkciou je:
 \begin{itemize}
     \item načítanie datasetu vo formáte JSONL (\texttt{prompt/completion}),
     \item aplikácia chat template cez tokenizer, ktorá vloží systémový prompt a formátuje vstup do správnej konverzačnej štruktúry,
@@ -72,11 +72,11 @@ Každý z troch modelov (Phi-3, Gemma-3, Qwen3) má vlastný \texttt{config.py},
 
 Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
 
-\textbf{Cesty k zdrojom:}
+\textbf{Zdroje a výstupy:}
 \begin{itemize}
     \item \texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,
-    \item \texttt{DATASET\_PATH} — cesta k tréningovému datasetu,
-    \item \texttt{OUTPUT\_DIR} — adresár pre uloženie výsledného adaptéra.
+    \item \texttt{DATASET\_PATH} — výber tréningového datasetu,
+    \item \texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.
 \end{itemize}
 
 \textbf{Hyperparametre tréningu:}
@@ -170,14 +170,14 @@ Každý \texttt{train.py} skript následuje jednotnú štruktúru:
     
     \item \textbf{Tréning:} Spustenie \texttt{trainer.train()}.
     
-    \item \textbf{Uloženie výsledku:} Uloženie natrénovaného LoRA adaptéra do adresára \texttt{final\_adapter} pomocou \texttt{save\_pretrained()}.
+    \item \textbf{Uloženie výsledku:} Uloženie natrénovaného LoRA adaptéra ako výstupu tréningu pomocou \texttt{save\_pretrained()}.
 \end{enumerate}
 
 Použitie \texttt{SFTTrainer} z knižnice TRL (Transformer Reinforcement Learning) bolo zvolené pre jeho natívnu podporu supervised fine-tuning s PEFT (Parameter-Efficient Fine-Tuning) adaptérmi. Táto knižnica automatizuje správne nastavenie loss funkcie, gradient accumulation a logovanie metrík, čo redukuje riziko implementačných chýb.
 
 \section{Direct Preference Optimization (DPO)}
 
-Po SFT fáze nasleduje voliteľná, ale odporúčaná fáza preferenčnej optimalizácie pomocou algoritmu DPO. Táto fáza je implementovaná v skripte \texttt{scripts/train\_dpo.py}, ktorý poskytuje unifikovaný nástroj pre DPO tréning všetkých troch modelov.
+Po SFT fáze nasleduje voliteľná, ale odporúčaná fáza preferenčnej optimalizácie pomocou algoritmu DPO. Táto fáza je implementovaná v samostatnom skripte \texttt{train\_dpo.py}, ktorý poskytuje unifikovaný nástroj pre DPO tréning všetkých troch modelov.
 
 \subsection{Motivácia a princíp DPO}
 
@@ -192,8 +192,8 @@ Skript je navrhnutý ako command-line nástroj s vopred definovanými presetmi p
 \textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}, kde každý preset špecifikuje:
 \begin{itemize}
     \item \texttt{base\_model\_id} — identifikátor základného modelu,
-    \item \texttt{sft\_adapter\_path} — cesta k SFT adaptéru, ktorý slúži ako východiskový bod,
-    \item \texttt{output\_dir} — adresár pre uloženie DPO adaptéra,
+    \item \texttt{sft\_adapter\_path} — referencia na SFT adaptér, ktorý slúži ako východiskový bod,
+    \item \texttt{output\_dir} — označenie výstupu DPO adaptéra,
     \item \texttt{compute\_dtype} — dátový typ (bfloat16),
     \item \texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),
     \item \texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,
@@ -203,7 +203,7 @@ Skript je navrhnutý ako command-line nástroj s vopred definovanými presetmi p
 \textbf{Argument parsing:} Skript akceptuje nasledovné parametre:
 \begin{itemize}
     \item \texttt{--model} — výber presetu (povinný parameter),
-    \item \texttt{--dataset} — cesta k DPO datasetu (default: \texttt{data/energy\_data\_dpo.jsonl}),
+    \item \texttt{--dataset} — výber DPO datasetu,
     \item \texttt{--beta} — DPO regularizačný parameter (default: 0.1),
     \item \texttt{--epochs} — počet tréningových epoch (default: 1),
     \item \texttt{--lr} — learning rate (default: 5e-5),
@@ -247,22 +247,22 @@ Tento prístup znamená, že policy model štartuje s SFT váhami a aplikuje na 
     \item \texttt{remove\_unused\_columns=False} — nevyhnutné pre DPO, ktoré vyžaduje všetky polia datasetu.
 \end{itemize}
 
-\textbf{6. Uloženie výsledku:} Po ukončení tréningu sa policy model (LoRA adaptér) ukladá do \texttt{final\_adapter} podadresára. Tento adaptér možno následne načítať nad SFT modelom pre inferenciu s preferenčne optimalizovaným správaním.
+\textbf{6. Uloženie výsledku:} Po ukončení tréningu sa policy model (LoRA adaptér) uloží ako výstup. Tento adaptér možno následne načítať nad SFT modelom pre inferenciu s preferenčne optimalizovaným správaním.
 
 \subsection{Použitie DPO skriptu}
 
 Typický workflow pre DPO tréning:
 \begin{verbatim}
-python scripts/train_dpo.py --model phi3
-python scripts/train_dpo.py --model gemma3 --beta 0.15 --epochs 2
-python scripts/train_dpo.py --model qwen3 --check-only
+python train_dpo.py --model phi3
+python train_dpo.py --model gemma3 --beta 0.15 --epochs 2
+python train_dpo.py --model qwen3 --check-only
 \end{verbatim}
 
-Parameter \texttt{--check-only} umožňuje validáciu ciest k datasetom a adaptérom bez skutočného načítania modelov, čo je užitočné pre rýchlu kontrolu konfigurácie.
+Parameter \texttt{--check-only} umožňuje validáciu konfigurácie datasetov a adaptérov bez skutočného načítania modelov, čo je užitočné pre rýchlu kontrolu konfigurácie.
 
 \section{Evaluácia modelov}
 
-Evaluačný systém je implementovaný v súbore \texttt{scripts/evaluate\_models.py}, ktorý poskytuje komplexné porovnanie základných a fine-tuned verzií všetkých troch modelov naprieč viacerými metrikami.
+Evaluačný systém je implementovaný v skripte \texttt{evaluate\_models.py}, ktorý poskytuje komplexné porovnanie základných a fine-tuned verzií všetkých troch modelov naprieč viacerými metrikami.
 
 \subsection{Motivácia a dizajn evaluačného systému}
 
@@ -332,9 +332,9 @@ Perplexita meria, ako dobre model predpovedá continuation textu — nižšia pe
 \textbf{G-Eval (LLM-as-a-Judge):}
 Pre subjektívne metriky kvality (relevance, coherence, fluency, factual accuracy) sa používa externý LLM ako hodnotiteľ. Implementácia:
 \begin{itemize}
-    \item používa Claude Haiku model cez Anthropic API,
+    \item používa lokálny model Mistral cez Ollama,
     \item pre každú vygenerovanú odpoveď zostaví prompt s otázkou, odpoveďou a referenciou,
-    \item požiada Claude o hodnotenie na škále 1-10 pre každé kritérium,
+    \item požiada model o hodnotenie na škále 1-10 pre každé kritérium,
     \item parsuje JSON odpoveď a extrahuje skóre,
     \item agreguje skóre cez všetky vzorky pomocou priemeru.
 \end{itemize}
@@ -343,51 +343,54 @@ Použitie LLM-as-a-Judge je osvedčená technika pre hodnotenie generatívnych m
 
 \subsection{Workflow evaluácie}
 
-Hlavný evaluačný loop v funkcii \texttt{evaluate\_model()}:
+Hlavný evaluačný loop v \texttt{evaluate\_model()} prebieha takto:
 \begin{enumerate}
-    \item Načítanie modelu a tokenizeru pomocou 4-bit kvantizácie,
-    \item Zaznamenanie VRAM po načítaní,
-    \item Profilovanie VRAM pri rôznych dĺžkach kontextu,
-    \item Iterácia cez n vzoriek z test datasetu:
+    \item Načítanie modelu a tokenizeru s 4-bit kvantizáciou (NF4). Pri SFT/DPO variantoch sa načíta LoRA adaptér a zlúči do základných váh.
+    \item Zaznamenanie VRAM po načítaní a voliteľné profilovanie VRAM pri dĺžkach kontextu 128/256/512/1024 tokenov.
+    \item Výber vzoriek: dataset sa premieša seedovaným RNG a rozdelí na \texttt{test\_samples} (inferencie) a \texttt{ppl\_samples} (perplexita) bez prekrývania.
+    \item Inferencia na \texttt{test\_samples}:
     \begin{itemize}
-        \item formátovanie otázky pomocou chat template,
-        \item generovanie odpovede s meraním TTFT a TPS,
-        \item uloženie výsledku do \texttt{SampleResult},
+        \item otázka sa serializuje cez chat template; \emph{base} varianty nepoužívajú systémový prompt, SFT/DPO varianty áno,
+        \item generovanie prebieha so streamerom \texttt{TextIteratorStreamer} kvôli meraniu TTFT,
+        \item zaznamená sa TTFT, TPS, počet tokenov a VRAM počas generovania do \texttt{SampleResult}.
     \end{itemize}
-    \item Výpočet perplexity na väčšej podmnožine test dát,
-    \item Agregácia metrík do \texttt{ModelMetrics},
-    \item Voliteľné spustenie G-Eval hodnotenia, ak je dostupné API,
-    \item Uvoľnenie modelu z pamäte.
+    \item Výpočet perplexity na \texttt{ppl\_samples} s maskovaním prompt tokenov.
+    \item Agregácia metrík do \texttt{ModelMetrics} a uvoľnenie modelu z VRAM.
 \end{enumerate}
+
+Kvalitatívne G-Eval skóre sa v praxi dopočítava až po uložení výsledkov. Na tento krok sa používa samostatný skript \texttt{judge\_only.py}, ktorý načíta JSON s vygenerovanými odpoveďami a ohodnotí ich lokálne cez Ollama model \texttt{mistral}.
 
 \subsection{Výstup a použitie}
 
-Skript generuje:
+Skript \texttt{evaluate\_models.py} generuje:
 \begin{itemize}
-    \item Konzolový výpis s priebežnými metrikami,
-    \item CSV súbor s agregovanými metrikami (\texttt{summary.csv}),
-    \item JSON súbory s detailnými výsledkami pre každý model,
-    \item Porovnávacie tabuľky zobrazujúce relatívne zlepšenie fine-tuned verzií.
+    \item konzolový výpis s priebežnými metrikami a prehľadovou tabuľkou,
+    \item CSV súbor s agregovanými metrikami a VRAM profilom,
+    \item JSON súbor s detailnými výsledkami (vrátane všetkých odpovedí).
 \end{itemize}
 
-Typické použitie:
+Následné G-Eval hodnotenie sa realizuje cez \texttt{judge\_only.py}, ktorý uloží samostatný JSON s priemernými G-Eval skóre pre každý model.
+
+Typické použitie v experimentoch:
 \begin{verbatim}
-python scripts/evaluate_models.py --n-samples 50 --judge
-python scripts/evaluate_models.py --models phi-3-base phi-3-ft
+python evaluate_models.py --n-samples 30 --n-ppl-samples 50
+python judge_only.py --model mistral
 \end{verbatim}
 
-Parameter \texttt{--judge} aktivuje G-Eval hodnotenie (vyžaduje \texttt{ANTHROPIC\_API\_KEY}), \texttt{--models} umožňuje selektívne testovanie.
+Skript \texttt{judge\_only.py} očakáva vstupný JSON s odpoveďami, ktorý sa zadáva parametrom \texttt{--input}.
+
+Parameter \texttt{--models} umožňuje selektívne testovanie a \texttt{--no-vram-profile} skráti beh pri rýchlych iteráciách.
 
 \subsection{Dizajnové rozhodnutia}
 
 \textbf{Prečo 4-bit kvantizácia aj v evaluácii:}
 Všetky modely sú evaluované s rovnakou 4-bit kvantizáciou, aká sa používa v tréningu. Toto zaisťuje konzistentnosť a objektívnosť — výsledky reflektujú reálne nasadenie, nie idealizovaný scenár s plnou presnosťou.
 
-\textbf{Prečo bez systémového promptu v baseline porovnaní:}
-Funkcia \texttt{format\_messages()} aplikuje len user prompt bez systémového promptu. Toto umožňuje vyhodnotiť, do akej miery boli doménové znalosti a štruktúra odpovede internalizované do váh modelu počas fine-tuningu, namiesto toho, aby boli dodané cez prompt.
+\textbf{Prečo bez systémového promptu pri base variantoch:}
+Funkcia \texttt{format\_messages()} používa systémový prompt len pre SFT/DPO modely. \emph{Base} varianty sú hodnotené bez systémového promptu, aby sa odlíšil čistý vplyv doménového doučenia od efektu prompt-inštrukcie.
 
 \textbf{Prečo TextIteratorStreamer:}
 Použitie streamera namiesto jednoduchého \texttt{model.generate()} umožňuje presné meranie TTFT, čo je kritická metrika pre interaktívne aplikácie. Prvý token určuje, kedy užívateľ začne vidieť odpoveď.
 
-\textbf{Prečo Claude Haiku pre G-Eval:}
-Claude Haiku poskytuje dobrý pomer kvality hodnotenia a nákladov. Je dostatočne schopný na objektívne hodnotenie, no lacnejší a rýchlejší ako väčšie modely ako Sonnet či Opus.
+\textbf{Prečo samostatný judge krok cez Ollama Mistral:}
+G-Eval sa vykonáva lokálne po dokončení generovania, aby neblokoval GPU pamäť a bolo možné hodnotenie opakovať bez opätovnej inferencie. Ollama \texttt{mistral} je dostupný bez API kľúčov, beží lokálne a poskytuje konzistentné hodnotenie pri nízkych prevádzkových nákladoch.

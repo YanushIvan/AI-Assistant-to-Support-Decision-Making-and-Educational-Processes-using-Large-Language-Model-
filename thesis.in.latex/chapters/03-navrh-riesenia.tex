@@ -10,9 +10,9 @@ V tejto kapitole je opísaný návrh pipeline doménovej adaptácie malých jazy
 Pre experimenty boli zvolené tri otvorené modely triedy SLM (Small Language Model), ktoré sú veľkosťou porovnateľné, ale líšia sa architektonickými detailmi:
 
 \begin{itemize}
-    \item \textbf{Phi-3 Mini (3.8B)} (\texttt{microsoft/Phi-3-mini-4k-instruct}),
-    \item \textbf{Gemma 3 4B} (\texttt{google/gemma-3-4b-it}),
-    \item \textbf{Qwen3 4B} (\texttt{Qwen/Qwen3-4B-Instruct-2507}).
+    \item \textbf{Phi-3 Mini (3.8B)},
+    \item \textbf{Gemma 3 4B},
+    \item \textbf{Qwen3 4B}.
 \end{itemize}
 
 Hlavné kritériá výberu:
@@ -44,7 +44,7 @@ Inými slovami, Instruct inicializácia v tomto projekte funguje ako silný \tex
 
 Tréning bol realizovaný na jednom JSONL datasete v štruktúrovanom formáte:
 \begin{itemize}
-    \item \texttt{data/energy\_data\_structured.jsonl} -- finálny tréningový dataset pre cieľový formát odpovede.
+    \item finálny tréningový dataset pre cieľový formát odpovede.
 \end{itemize}
 
 Každý riadok JSONL predstavuje jednu tréningovú vzorku s poľami:
@@ -61,12 +61,12 @@ kde $p_i$ je používateľský vstup a $c_i$ je cieľová odpoveď v doménovom 
 
 V použitej verzii projektu má dataset nasledujúci rozsah:
 \begin{itemize}
-    \item \texttt{energy\_data\_structured.jsonl}: 1159 záznamov.
+    \item štruktúrovaný tréningový dataset: 1159 záznamov.
 \end{itemize}
 
 Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
 \begin{itemize}
-    \item \texttt{energy\_data\_dpo.jsonl}: 1126 záznamov vo formáte \texttt{prompt/chosen/rejected}.
+    \item preferenčný dataset vo formáte \texttt{prompt/chosen/rejected}: 1126 záznamov.
 \end{itemize}
 
 \subsection{Zdroje a zbierka dát}
@@ -111,7 +111,7 @@ Táto štruktúra je prínosná nielen pre používateľa, ale aj pre samotné u
 
 \subsection{Príprava dát v zdieľanom dátovom loaderi}
 
-Implementácia SFT používa spoločnú dátovú vrstvu pre všetky tri modely (\texttt{training/shared/data\_loader.py}). Táto vrstva zabezpečuje:
+Implementácia SFT používa spoločnú dátovú vrstvu pre všetky tri modely. Táto vrstva zabezpečuje:
 \begin{itemize}
     \item načítanie JSONL datasetu cez knižnicu \texttt{datasets},
     \item serializáciu dialógu \texttt{system/user/assistant} cez \texttt{tokenizer.apply\_chat\_template},
@@ -261,7 +261,7 @@ API vrstva poskytuje najmä endpointy \texttt{/api/chat}, \texttt{/api/models} a
 
 \section{Vyhodnocovacia pipeline a reprodukovateľnosť}
 
-Pre experimentálne porovnanie modelov je pripravený samostatný skript \texttt{scripts/evaluate\_models.py}, ktorý meria kvalitatívne aj prevádzkové metriky:
+Pre experimentálne porovnanie modelov je pripravený samostatný evaluačný skript, ktorý meria kvalitatívne aj prevádzkové metriky:
 \begin{itemize}
     \item G-Eval (relevance, coherence, fluency, factual accuracy),
     \item perplexitu na testovacích vzorkách,
@@ -269,7 +269,7 @@ Pre experimentálne porovnanie modelov je pripravený samostatný skript \texttt
     \item spotrebu VRAM pri rôznych dĺžkach kontextu.
 \end{itemize}
 
-Reprodukovateľnosť tréningu je podporená oddelením konfigurácií podľa modelových rodín (\texttt{training/phi3}, \texttt{training/gemma3}, \texttt{training/qwen3}) a jednotnými vstupnými dátami. Všetky experimenty ukladajú výsledné adaptéry do priečinkov \texttt{final\_adapter}, čo umožňuje ich okamžité použitie v API vrstve bez dodatočných konverzií.
+Reprodukovateľnosť tréningu je podporená oddelením konfigurácií podľa modelových rodín a jednotnými vstupnými dátami. Výsledné adaptéry sú ukladané konzistentne, čo umožňuje ich okamžité použitie v API vrstve bez dodatočných konverzií.
 
 \section{Zhrnutie návrhu riešenia}
 
