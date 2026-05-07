@@ -6,7 +6,7 @@ Práca sa zamerala na návrh a realizáciu AI asistenta pre energetiku v Európe
 
 V teoretickej časti bol analyzovaný vývoj jazykových modelov so zameraním na parameter-efektívne fine-tuning techniky. Na základe tejto analýzy bol pre experimentálnu časť zvolený postup kombinujúci Instruct inicializáciu, SFT, QLoRA a doplnkovú DPO kalibráciu. Tento postup bol implementovaný pre tri modelové rodiny (Phi-3 Mini, Gemma 3 4B a Qwen3 4B) pri jednotnej dátovej schéme a porovnateľných tréningových podmienkach.
 
-Praktickým výstupom práce je reprodukovateľná tréningová pipeline a funkčný konverzačný systém postavený na FastAPI, ktorý umožňuje prepínanie modelov, generovanie štruktúrovaných odpovedí a prevádzku na obmedzenom hardvéri. Dôležitým prínosom je aj jednotná vyhodnocovacia metodika spájajúca kvalitatívne metriky odpovedí s prevádzkovými metrikami (latencia, priepustnosť, pamäťové nároky).
+Praktickým výstupom práce je reprodukovateľná tréningová pipeline a funkčný konverzačný systém postavený na FastAPI, ktorý umožňuje prepínanie modelov, generovanie štruktúrovaných odpovedí a prevádzku na obmedzenom hardvéri. Dôležitým prínosom je aj jednotná vyhodnocovacia metodika spájajúca kvalitatívne metriky odpovedí s prevádzkovými metrikami (latencia, priepustnosť, pamäťové nároky). Napriek obmedzeniu na 20~GB VRAM a datasetu s 1160 príkladmi sa podarilo zvýšiť priemerné G-Eval skóre o 0.40--5.04~\% oproti \emph{base} variantom.
 
 Stanovené ciele práce boli splnené v rozsahu návrhu, implementácie a experimentálneho rámca. Riešenie zároveň potvrdilo, že malé modely po doménovej adaptácii predstavujú realistickú alternatívu k veľkým všeobecným modelom v scenároch, kde sú rozhodujúce náklady, dostupnosť výpočtových zdrojov a rýchlosť nasadenia.
 
