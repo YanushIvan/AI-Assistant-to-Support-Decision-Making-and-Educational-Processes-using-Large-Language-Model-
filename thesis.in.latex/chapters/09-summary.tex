@@ -1,13 +1,46 @@
 % !TEX root = ../thesis.tex
-
+ 
 \chapter{Záver}\label{ch:summary}
-
-Práca sa zamerala na návrh a realizáciu AI asistenta pre energetiku v Európe s využitím malých jazykových modelov a výpočtovo úsporných metód doučenia. Hlavným cieľom bolo overiť, či je možné dosiahnuť prakticky použiteľné doménové odpovede aj bez veľkých výpočtových klastrov.
-
-V teoretickej časti bol analyzovaný vývoj jazykových modelov so zameraním na parameter-efektívne fine-tuning techniky. Na základe tejto analýzy bol pre experimentálnu časť zvolený postup kombinujúci Instruct inicializáciu, SFT, QLoRA a doplnkovú DPO kalibráciu. Tento postup bol implementovaný pre tri modelové rodiny (Phi-3 Mini, Gemma 3 4B a Qwen3 4B) pri jednotnej dátovej schéme a porovnateľných tréningových podmienkach.
-
-Praktickým výstupom práce je reprodukovateľná tréningová pipeline a funkčný konverzačný systém postavený na FastAPI, ktorý umožňuje prepínanie modelov, generovanie štruktúrovaných odpovedí a prevádzku na obmedzenom hardvéri. Dôležitým prínosom je aj jednotná vyhodnocovacia metodika spájajúca kvalitatívne metriky odpovedí s prevádzkovými metrikami (latencia, priepustnosť, pamäťové nároky). Napriek obmedzeniu na 20~GB VRAM a datasetu s 1160 príkladmi sa podarilo zvýšiť priemerné G-Eval skóre o 0.40--5.04~\% oproti \emph{base} variantom.
-
-Stanovené ciele práce boli splnené v rozsahu návrhu, implementácie a experimentálneho rámca. Riešenie zároveň potvrdilo, že malé modely po doménovej adaptácii predstavujú realistickú alternatívu k veľkým všeobecným modelom v scenároch, kde sú rozhodujúce náklady, dostupnosť výpočtových zdrojov a rýchlosť nasadenia.
-
-Priestor na ďalší výskum zostáva najmä v rozšírení datasetu, detailnejšom meraní robustnosti voči nejednoznačným otázkam, porovnaní SFT a DPO variantov na širšej sade metrík a v doplnení retrieval mechanizmu s citáciami zdrojov. Tieto kroky by mohli ďalej zvýšiť faktickú spoľahlivosť systému a jeho využiteľnosť v rozhodovacích procesoch.
+ 
+Práca sa zamerala na návrh a realizáciu AI asistenta pre oblasť energetiky v Európe. Využité boli malé jazykové modely a výpočtovo úsporné metódy doučenia. Hlavným cieľom bolo overiť, či je možné dosiahnuť prakticky použiteľné doménové odpovede aj bez veľkých výpočtových klastrov.
+ 
+\section*{Zhrnutie teoretickej časti}
+ 
+V analytickej časti bol spracovaný vývoj jazykových modelov. Osobitná pozornosť bola venovaná parameter-efektívnym fine-tuning technikám. Boli analyzované tri malé modely: Phi-3 Mini (3.8B), Gemma 3 4B a Qwen3 4B. Pre každý z nich boli posúdené architektonické vlastnosti, licenčné podmienky a kompatibilita s dostupnými knižnicami. Na základe tejto analýzy bol zvolený postup spájajúci Instruct inicializáciu, SFT, QLoRA a doplnkovú DPO kalibráciu. Táto kombinácia je vhodná pre prostredia s obmedzeným hardvérovým vybavením.
+ 
+\section*{Zhrnutie praktickej časti}
+ 
+V praktickej časti bol implementovaný celý pipeline doménovej adaptácie. Tréningový dataset bol zostavený z odborných zdrojov pokrývajúcich európsku energetiku. Dataset obsahuje 1159 vzoriek pre SFT a 1126 vzoriek pre DPO. Každý model bol trénovaný s vlastnou konfiguráciou hyperparametrov. Zdieľaná dátová pipeline zaistila jednotné predspracovanie naprieč všetkými modelmi.
+ 
+Praktickým výstupom práce je reprodukovateľná tréningová pipeline. Jej súčasťou je aj funkčný konverzačný systém postavený na FastAPI. Systém umožňuje prepínanie modelov a generovanie štruktúrovaných odpovedí. Môže bežať na obmedzenom hardvéri bez špeciálneho výpočtového klastra.
+ 
+\section*{Splnenie stanovených cieľov}
+ 
+Stanovené ciele práce boli splnené nasledovne:
+ 
+\begin{itemize}
+    \item \textbf{Príprava datasetu:} bol zostavený doménový dataset z energetických zdrojov vhodný pre inštrukčný tréning, vrátane preferenčných párov pre DPO.
+    \item \textbf{Výber a porovnanie modelov:} boli identifikované a porovnané tri SLM modely podľa veľkosti, architektúry a dostupnosti.
+    \item \textbf{Doučenie modelov:} všetky tri modely boli doučené pomocou QLoRA na doménovom datasete. Výpočtové nároky boli zdokumentované.
+    \item \textbf{Konverzačný asistent:} bol navrhnutý a implementovaný jednotný inferenčný systém vo forme REST API.
+    \item \textbf{Vyhodnotenie:} schopnosti modelov boli zmerané pomocou G-Eval, perplexity, TTFT, TPS a VRAM profilovania.
+    \item \textbf{Porovnanie s všeobecnými modelmi:} výsledky potvrdili, že malé doučené modely môžu predstavovať realistickú alternatívu k veľkým všeobecným modelom v doménovo špecifických scenároch.
+\end{itemize}
+ 
+\section*{Dosiahnuté výsledky}
+ 
+Napriek obmedzeniu na 20~GB VRAM a datasetu s 1159 príkladmi boli dosiahnuté merateľné zlepšenia. Priemerné G-Eval skóre vzrástlo oproti base variantom o 3.77~\% (Phi-3 SFT) a 5.04~\% (Phi-3 DPO). Pri Gemma-3 a Qwen3 boli prínosy jemnejšie (0.40--1.25~\%), no konzistentné. Prejavili sa najmä v kategórii factual accuracy a v skracovaní odpovedí.
+ 
+Z pohľadu kompromisu medzi kvalitou a pamäťovými nárokmi sa ako najvyváženejšia voľba ukázal model Qwen3 SFT. Dosahuje G-Eval skóre 9.53 v kategórii factual accuracy a patrí k pamäťovo najúspornejším 4B modelom. Ak je prioritou maximálna faktická správnosť, najlepší výsledok prináša Gemma-3 DPO (9.63). Pre scenáre s extrémne obmedzenou VRAM a nízkou latenciou je vhodný Phi-3 Base (TTFT 0.083~s, VRAM 858~MB).
+ 
+Doménové doučenie tiež výrazne skrátilo priemerné odpovede. Všetky SFT/DPO varianty generujú odpovede o 50--70~\% kratšie než base modely. To je v súlade s cieľom stručného a štruktúrovaného výstupu vhodného pre rozhodovacie procesy.
+ 
+\section*{Obmedzenia práce}
+ 
+Práca má niekoľko obmedzení. Dataset 1159 príkladov je kompaktný. Pre robustnejšie závery by bol vhodný väčší a tematicky diverzifikovanejší dataset. Evaluácia bola realizovaná na 30 testovacích vzorkách bez štandardnej odchýlky. Výsledky preto treba interpretovať ako orientačné. G-Eval hodnotiteľ bol lokálny model Mistral. Iný hodnotiteľ mohol by priniesť odlišné skóre.
+ 
+\section*{Možnosti ďalšieho výskumu}
+ 
+Práca otvára niekoľko smerov pre pokračovanie. Prvým je rozšírenie datasetu o nové zdroje a jazyky. Väčší a diverzifikovanejší dataset by zlepšil schopnosť generalizácie. Druhým smerom je pridanie retrieval mechanizmu (RAG). Ten by umožnil modelu odkazovať na konkrétne dokumenty a citovať zdroje. Faktická spoľahlivosť by sa tým zvýšila. Tretím smerom je meranie robustnosti voči nejednoznačným otázkam a halucináciám. Štvrtým je porovnanie SFT a DPO variantov na širšej sade metrík vrátane ľudského hodnotenia. Piaty smer predstavuje nasadenie systému v reálnom prostredí a zber spätnej väzby od doménových expertov.
+ 
+Tieto kroky by mohli ďalej zvýšiť praktickú využiteľnosť systému. Rovnako by mohli potvrdiť výsledky tejto práce na väčšom rozsahu experimentov.

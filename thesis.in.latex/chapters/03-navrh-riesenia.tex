@@ -43,9 +43,6 @@ Inými slovami, Instruct inicializácia funguje v tomto projekte ako silný \tex
 \subsection{Formát a organizácia dát}
 
 Tréning bol realizovaný na jednom JSONL datasete v štruktúrovanom formáte:
-\begin{itemize}
-    \item finálny tréningový dataset pre cieľový formát odpovede.
-\end{itemize}
 
 Každý riadok JSONL predstavuje jednu tréningovú vzorku. Vzorka obsahuje dve polia:
 \begin{itemize}
@@ -74,11 +71,12 @@ Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
 Dáta boli systematicky zbierané z rôznych relevantných zdrojov. Cieľom bola vysoká kvalita aj diverzita učebného materiálu. Zdrojmi dát boli:
 
 \begin{itemize}
-    \item \textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od \textbf{IRENA} (International Renewable Energy Agency), \textbf{IEA} (International Energy Agency) a \textbf{ACER} (Agency for the Cooperation of Energy Regulators). Tieto zdroje poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch a trhu s energiami.
-    \item \textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textbf{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov.
-    \item \textbf{Vedecké články a výskumné práce} -- články z platformy \textbf{arXiv} a ďalších vedeckých databáz. Pokrývajú trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov.
+    \item \textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od \textit{IRENA} (International Renewable Energy Agency), \textit{IEA} (International Energy Agency) a \textit{ACER} (Agency for the Cooperation of Energy Regulators). Tieto zdroje poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch a trhu s energiami.
+    \item \textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textit{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov.
+    \item \textbf{Vedecké články a výskumné práce} -- články z platformy \textit{arXiv} a ďalších vedeckých databáz. Pokrývajú trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov.
     \item \textbf{Prípadové štúdie a praktické údaje} -- reálne údaje z energetických projektov a operácií energetických systémov.
 \end{itemize}
+
 
 Táto diverzita zdrojov zabezpečila, že dataset obsahuje aktuálne vedecké poznatky, regulačné informácie aj praktické znalosti. Dáta boli následne spracované a štandardizované do formátu prompt-completion. Dôraz bol kladený na faktuálnu presnosť a relevantnosť pre energetické úlohy.
 
