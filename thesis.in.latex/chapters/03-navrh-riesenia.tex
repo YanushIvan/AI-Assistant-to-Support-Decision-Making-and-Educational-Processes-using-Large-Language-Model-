@@ -3,11 +3,11 @@
 \chapter{Návrh riešenia}
 \label{ch:navrh-riesenia}
 
-V tejto kapitole je opísaný návrh pipeline doménovej adaptácie malých jazykových modelov pre energetické úlohy: od výberu modelov a prípravy dát až po metodologické východiská prístupu QLoRA a návrh inferenčnej a vyhodnocovacej vrstvy.
+Táto kapitola opisuje návrh pipeline doménovej adaptácie malých jazykových modelov. Pokrýva výber modelov, prípravu dát, metodologické východiská QLoRA a návrh inferenčnej a vyhodnocovacej vrstvy.
 
 \section{Výber modelov a ich architektonické vlastnosti}
 
-Pre experimenty boli zvolené tri otvorené modely triedy SLM (Small Language Model), ktoré sú veľkosťou porovnateľné, ale líšia sa architektonickými detailmi:
+Pre experimenty boli zvolené tri otvorené modely triedy SLM (Small Language Model). Všetky sú veľkosťou porovnateľné, líšia sa však architektonickými detailmi:
 
 \begin{itemize}
     \item \textbf{Phi-3 Mini (3.8B)},
@@ -23,20 +23,20 @@ Hlavné kritériá výberu:
     \item architektonická rôznorodosť vhodná na porovnanie (odlišná tokenizácia, chat šablóny, mechanizmy attention a implementácia forward priechodu).
 \end{itemize}
 
-Z inžinierskeho pohľadu sa modely vhodne dopĺňajú: Phi-3 Mini je orientovaná na vysokú efektivitu pri malom počte parametrov, Gemma 3 4B dosahuje kvalitné sledovanie inštrukcií a pri textovom tréningu vyžaduje špecifickú integráciu (keďže ide o multimodálnu architektúru), Qwen3 4B ponúka stabilný výkon v analytických úlohách a konverzačnom režime.
+Z inžinierskeho pohľadu sa modely vhodne dopĺňajú. Phi-3 Mini je orientovaná na vysokú efektivitu pri malom počte parametrov. Gemma 3 4B dosahuje kvalitné sledovanie inštrukcií, no pri textovom tréningu vyžaduje špecifickú integráciu, keďže ide o multimodálnu architektúru. Qwen3 4B ponúka stabilný výkon v analytických úlohách a v konverzačnom režime.
 
 \subsection{Prečo Instruct verzie namiesto Base váh}
 
-V projekte je cieľovým scenárom \textit{interaktívny asistent}, kde používateľ zadáva inštrukciu a model má vrátiť stručnú, štruktúrovanú a prakticky použiteľnú odpoveď. Pre takýto režim sú Instruct váhy vhodnejšou inicializáciou než Base váhy z týchto dôvodov:
+Cieľovým scenárom projektu je \textit{interaktívny asistent}. Používateľ zadáva inštrukciu a model vracia stručnú, štruktúrovanú a prakticky použiteľnú odpoveď. Pre takýto režim sú Instruct váhy vhodnejšou inicializáciou než Base váhy z týchto dôvodov:
 
 \begin{itemize}
-    \item Instruct modely už prešli učením vo formáte \enquote{inštrukcia $\rightarrow$ odpoveď}, preto sa v SFT zvyčajne učia rýchlejšie a stabilnejšie,
-    \item Base modely sú optimalizované hlavne na pokračovanie textu, nie na disciplinované konverzačné odpovede,
-    \item pri obmedzenom výpočtovom rozpočte je výhodné nepreúčať základné správanie modelu od nuly, ale sústrediť sa na doménové znalosti,
-    \item štart z Instruct váh znižuje riziko degradácie konverzačných schopností počas PEFT tréningu na menšom doménovom datasete.
+    \item Instruct modely už prešli učením vo formáte \enquote{inštrukcia $\rightarrow$ odpoveď}. V SFT sa preto učia rýchlejšie a stabilnejšie.
+    \item Base modely sú optimalizované hlavne na pokračovanie textu, nie na disciplinované konverzačné odpovede.
+    \item Pri obmedzenom výpočtovom rozpočte je výhodné nepreúčať základné správanie modelu od nuly. Adaptácia sa sústreďuje výhradne na doménové znalosti.
+    \item Štart z Instruct váh znižuje riziko degradácie konverzačných schopností počas PEFT tréningu na menšom doménovom datasete.
 \end{itemize}
 
-Inými slovami, Instruct inicializácia v tomto projekte funguje ako silný \textit{behavioral prior}: QLoRA adaptéry dolaďujú doménové znalosti a štýl odpovedí, nie základnú schopnosť modelu nasledovať inštrukcie.
+Inými slovami, Instruct inicializácia funguje v tomto projekte ako silný \textit{behavioral prior}. QLoRA adaptéry dolaďujú doménové znalosti a štýl odpovedí. Základná schopnosť modelu nasledovať inštrukcie zostáva nedotknutá.
 
 \section{Dáta a štruktúra datasetu}
 
@@ -47,7 +47,7 @@ Tréning bol realizovaný na jednom JSONL datasete v štruktúrovanom formáte:
     \item finálny tréningový dataset pre cieľový formát odpovede.
 \end{itemize}
 
-Každý riadok JSONL predstavuje jednu tréningovú vzorku s poľami:
+Každý riadok JSONL predstavuje jednu tréningovú vzorku. Vzorka obsahuje dve polia:
 \begin{itemize}
     \item \texttt{prompt}: otázka/inštrukcia používateľa,
     \item \texttt{completion}: cieľová odpoveď asistenta.
@@ -71,25 +71,25 @@ Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
 
 \subsection{Zdroje a zbierka dát}
 
-Dáta v datasete boli systematicky zbierané z rôznych relevantných zdrojov, aby sa zaistila vysoká kvalita a diverzita učebného materiálu. Zdrojmi dát boli:
+Dáta boli systematicky zbierané z rôznych relevantných zdrojov. Cieľom bola vysoká kvalita aj diverzita učebného materiálu. Zdrojmi dát boli:
 
 \begin{itemize}
-    \item \textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od organizácií ako \textbf{IRENA} (International Renewable Energy Agency), \textbf{IEA} (International Energy Agency) a \textbf{ACER} (Agency for the Cooperation of Energy Regulators), ktoré poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch energie a trhu s energiami,
-    \item \textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textbf{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov,
-    \item \textbf{Vedecké články a výskumné práce} -- články publikované na platforme \textbf{arXiv} a ďalších vedeckých databázach, ktoré pokrývajú najnovšie trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov,
+    \item \textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od \textbf{IRENA} (International Renewable Energy Agency), \textbf{IEA} (International Energy Agency) a \textbf{ACER} (Agency for the Cooperation of Energy Regulators). Tieto zdroje poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch a trhu s energiami.
+    \item \textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textbf{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov.
+    \item \textbf{Vedecké články a výskumné práce} -- články z platformy \textbf{arXiv} a ďalších vedeckých databáz. Pokrývajú trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov.
     \item \textbf{Prípadové štúdie a praktické údaje} -- reálne údaje z energetických projektov a operácií energetických systémov.
 \end{itemize}
 
-Táto diverzita zdrojov zabezpečila, že dataset obsahuje aktuálne vedecké poznatky, regulačné informácie a praktické znalosti z domény energetiky. Dáta boli následne spracované a štandardizované do jednotného formátu prompt-completion s dôrazom na faktuálnu presnosť a relevantnosť pre energetické úlohy.
+Táto diverzita zdrojov zabezpečila, že dataset obsahuje aktuálne vedecké poznatky, regulačné informácie aj praktické znalosti. Dáta boli následne spracované a štandardizované do formátu prompt-completion. Dôraz bol kladený na faktuálnu presnosť a relevantnosť pre energetické úlohy.
 
 \subsection{Logika prompt-completion a jej vhodnosť}
 
 Zvolený formát prompt-completion je pre tento scenár vhodný z troch dôvodov:
 
 \begin{itemize}
-    \item \textbf{Priama kompatibilita s Causal LM.} Dialóg sa serializuje cez chat-template tokenizéra do sekvencie system/user/assistant a model sa učí predikovať tokeny asistenta.
-    \item \textbf{Kontrolovaný tréningový signál.} V pipeline sa používajú maskované labely: tokeny systémovej a používateľskej časti majú hodnotu $-100$, takže loss sa počíta iba z completion časti. Tým sa model netrestá za reprodukciu vstupu a sústredí sa na kvalitu odpovede.
-    \item \textbf{Stabilita pre PEFT.} Pri QLoRA sa aktualizuje len obmedzený počet parametrov (LoRA adaptéry), preto je dôležitý jednoznačný supervised signál. Štruktúrovaný completion tento signál poskytuje.
+    \item \textbf{Priama kompatibilita s Causal LM.} Dialóg sa serializuje cez chat-template tokenizéra do sekvencie system/user/assistant. Model sa učí predikovať tokeny asistenta.
+    \item \textbf{Kontrolovaný tréningový signál.} Tokeny systémovej a používateľskej časti majú v pipeline hodnotu $-100$. Loss sa počíta iba z completion časti. Model sa preto netrestá za reprodukciu vstupu a sústredí sa na kvalitu odpovede.
+    \item \textbf{Stabilita pre PEFT.} Pri QLoRA sa aktualizuje len obmedzený počet parametrov (LoRA adaptéry). Jednoznačný supervised signál je preto kľúčový. Štruktúrovaný completion tento signál poskytuje.
 \end{itemize}
 
 V štruktúrovanej verzii odpovede sa používa šablóna:
@@ -107,7 +107,7 @@ CONFIDENCE: High/Medium/Low
 ...
 \end{verbatim}
 
-Táto štruktúra je prínosná nielen pre používateľa, ale aj pre samotné učenie: model si osvojuje opakovateľný formát generovania, čo zvyšuje predvídateľnosť výstupu počas inferencie.
+Táto štruktúra je prínosná nielen pre používateľa. Model si vďaka nej osvojuje opakovateľný formát generovania. Výstup počas inferencie je tak predvídateľnejší.
 
 \subsection{Príprava dát v zdieľanom dátovom loaderi}
 
@@ -120,58 +120,58 @@ Implementácia SFT používa spoločnú dátovú vrstvu pre všetky tri modely. 
     \item rozdelenie datasetu na trénovaciu a validačnú časť.
 \end{itemize}
 
-Výhodou tohto riešenia je jednotná metodika spracovania dát naprieč modelmi. Rozdiely medzi experimentmi sú preto dané najmä architektúrou modelov a hyperparametrami, nie odlišným predspracovaním.
+Výhodou tohto riešenia je jednotná metodika spracovania dát naprieč modelmi. Rozdiely medzi experimentmi sú preto dané architektúrou modelov a hyperparametrami, nie odlišným predspracovaním.
 
 \section{Metodológia SFT a DPO}
 
-Táto časť nadväzuje na opis dátovej vrstvy a formálne špecifikuje učebný postup použitý v experimentoch. Najprv je definovaná fáza Supervised Fine-Tuning (SFT), ktorá model ukotví v požadovanom doménovom štýle a štruktúre odpovedí, a následne fáza Direct Preference Optimization (DPO), ktorá tento základ kalibruje podľa preferencií kvality. Spolu tak tvoria dvojstupňový adaptačný rámec zameraný na faktickosť, konzistentnosť a praktickú použiteľnosť výstupov v energetických úlohách.
+Táto časť nadväzuje na opis dátovej vrstvy. Formálne špecifikuje učebný postup použitý v experimentoch. Najprv je definovaná fáza Supervised Fine-Tuning (SFT). Tá model ukotví v požadovanom doménovom štýle a štruktúre odpovedí. Následne nasleduje fáza Direct Preference Optimization (DPO). Tá základ kalibruje podľa preferencií kvality. Spolu tvoria dvojstupňový adaptačný rámec. Jeho cieľom je faktickosť, konzistentnosť a praktická použiteľnosť výstupov v energetických úlohách.
 
 \subsection{Supervised Fine-Tuning (SFT)}
 
-V navrhnutej pipeline predstavuje SFT prvú fázu doménovej adaptácie. Cieľom je preniesť model z~generického inštrukčného správania na špecifické požiadavky energetickej domény: terminológiu, formátovanie odpovedí a preferovaný spôsob argumentácie. Tento postup je v súlade s výsledkami InstructGPT~\cite{Ouyang2022InstructGPT}, kde sa ukazuje, že inštrukčné doučenie výrazne zlepšuje praktickú použiteľnosť modelu, ako aj so zisteniami práce FLAN~\cite{Chung2022ScalingInstruction}, ktorá demonštruje, že inštrukčné doučenie škáluje naprieč modelmi a úlohami.
+SFT predstavuje v navrhnutej pipeline prvú fázu doménovej adaptácie. Cieľom je preniesť model z generického inštrukčného správania na špecifické požiadavky energetickej domény. Ide predovšetkým o terminológiu, formátovanie odpovedí a preferovaný spôsob argumentácie. Tento postup je v súlade s výsledkami InstructGPT~\cite{Ouyang2022InstructGPT}. Inštrukčné doučenie výrazne zlepšuje praktickú použiteľnosť modelu. Rovnaký záver prináša aj práca FLAN~\cite{Chung2022ScalingInstruction}, ktorá ukazuje, že inštrukčné doučenie škáluje naprieč modelmi a úlohami.
 
 Pre tréningovú dvojicu $x_i = \{p_i, c_i\}$ je cieľom maximalizovať podmienenú pravdepodobnosť cieľovej odpovede:
 \begin{equation}
     \max_{\theta} \; \log p_{\theta}(c_i \mid p_i).
 \end{equation}
 
-V implementácii sa tento cieľ realizuje cez token-level cross-entropy nad asistentovou časťou výstupu. Tokeny systémovej a používateľskej časti sú maskované hodnotou $-100$, takže sa neoptimalizuje reprodukcia vstupu, ale kvalita completion časti. Z~hľadiska návrhu je to dôležité: model sa učí \enquote{ako odpovedať}, nie \enquote{čo bolo zadané}.
+V implementácii sa tento cieľ realizuje cez token-level cross-entropy nad asistentovou časťou výstupu. Tokeny systémovej a používateľskej časti sú maskované hodnotou $-100$. Neoptimalizuje sa teda reprodukcia vstupu, ale kvalita completion časti. Z hľadiska návrhu je to kľúčové: model sa učí \enquote{ako odpovedať}, nie \enquote{čo bolo zadané}.
 
-Dodatočne, SFT fáza využíva jednotný formát odpovedí (ANSWER, KEY FACTS, RISK LEVEL, CONFIDENCE), čím sa už počas učenia vynucuje konzistentná štruktúra výstupu. Výsledkom je vyššia predvídateľnosť inferencie a jednoduchšie následné automatické vyhodnocovanie.
+SFT fáza navyše využíva jednotný formát odpovedí (ANSWER, KEY FACTS, RISK LEVEL, CONFIDENCE). Konzistentná štruktúra výstupu sa tým vynucuje už počas učenia. Výsledkom je vyššia predvídateľnosť inferencie a jednoduchšie automatické vyhodnocovanie.
 
-Relevantným doplnkom k tejto metodike je aj poznatok zo Self-Instruct~\cite{Wang2023SelfInstruct}: diverzita a kvalita inštrukčných vzoriek má priamy vplyv na schopnosť modelu generalizovať na nové úlohy. Aj preto bol pri tvorbe energetického datasetu kladený dôraz na obsahovo rôznorodé prompty a realistické completion odpovede.
+Relevantným doplnkom je poznatok zo Self-Instruct~\cite{Wang2023SelfInstruct}. Diverzita a kvalita inštrukčných vzoriek má priamy vplyv na schopnosť modelu generalizovať na nové úlohy. Pri tvorbe energetického datasetu bol preto kladený dôraz na obsahovo rôznorodé prompty a realistické completion odpovede.
 
 \subsection{Direct Preference Optimization (DPO)}
 
-Napriek tomu, že SFT spoľahlivo naučí model požadovaný formát a doménový jazyk, stále optimalizuje len pravdepodobnosť jednej referenčnej odpovede. V praxi však často existuje viacero možných odpovedí s rôznou kvalitou, mierou rizika alebo presnosťou formulácie. Práve túto vrstvu preferencií rieši DPO~\cite{Rafailov2023DPO}.
+SFT spoľahlivo naučí model požadovaný formát a doménový jazyk. Optimalizuje však len pravdepodobnosť jednej referenčnej odpovede. V praxi existuje pre rovnaký prompt viacero možných odpovedí s rôznou kvalitou, mierou rizika alebo presnosťou formulácie. Práve túto vrstvu preferencií rieši DPO~\cite{Rafailov2023DPO}.
 
-DPO trénuje model na trojiciach $(p, c^{+}, c^{-})$, kde $c^{+}$ je preferovaná odpoveď a $c^{-}$ je menej vhodná odpoveď pre rovnaký prompt. Optimalizačný cieľ je možné zapísať ako:
+DPO trénuje model na trojiciach $(p, c^{+}, c^{-})$. $c^{+}$ je preferovaná odpoveď, $c^{-}$ je menej vhodná odpoveď pre rovnaký prompt. Optimalizačný cieľ je možné zapísať ako:
 \begin{equation}
 \mathcal{L}_{\mathrm{DPO}}(\theta) = -\mathbb{E}_{(p,c^{+},c^{-})}\left[\log \sigma\left(\beta \left(\log \frac{\pi_{\theta}(c^{+}\mid p)}{\pi_{\mathrm{ref}}(c^{+}\mid p)} - \log \frac{\pi_{\theta}(c^{-}\mid p)}{\pi_{\mathrm{ref}}(c^{-}\mid p)}\right)\right)\right],
 \end{equation}
 kde $\pi_{\mathrm{ref}}$ je referenčný (fixný) model a $\beta$ riadi silu odchýlky od referenčnej politiky.
 
-Z metodologického pohľadu je podstatné, že DPO dosahuje preferenčné učenie bez explicitného reward modelu a bez PPO optimalizácie, ktoré sú typické pre klasické RLHF pipeline~\cite{Ouyang2022InstructGPT}. To znižuje implementačnú aj výpočtovú komplexitu a zároveň zachováva dobrú stabilitu tréningu~\cite{Rafailov2023DPO}.
+DPO dosahuje preferenčné učenie bez explicitného reward modelu. Nevyžaduje ani PPO optimalizáciu, ktorá je typická pre klasické RLHF pipeline~\cite{Ouyang2022InstructGPT}. Výsledkom je nižšia implementačná aj výpočtová komplexita. Stabilita tréningu je pritom zachovaná~\cite{Rafailov2023DPO}.
 
 \subsection{Prečo realizovať DPO po SFT}
 
 Sekvencia SFT $\rightarrow$ DPO je v tomto projekte zvolená zámerne. Obe fázy riešia odlišné vrstvy problému:
 
 \begin{itemize}
-    \item \textbf{SFT} učí základné doménové správanie: terminológiu, faktografický štýl a požadovanú štruktúru odpovedí,
-    \item \textbf{DPO} následne dolaďuje preferencie kvality: uprednostnenie vecných, stručných a bezpečnejších odpovedí pred menej vhodnými alternatívami.
+    \item \textbf{SFT} učí základné doménové správanie: terminológiu, faktografický štýl a požadovanú štruktúru odpovedí.
+    \item \textbf{DPO} následne dolaďuje preferencie kvality: uprednostňuje vecné, stručné a bezpečnejšie odpovede pred menej vhodnými alternatívami.
 \end{itemize}
 
 Z praktického hľadiska má táto dvojfázová stratégia tri hlavné prínosy:
 \begin{itemize}
-    \item \textbf{Lepšia kalibrácia výstupu:} model sa učí explicitne rozlišovať medzi lepšou a horšou odpoveďou na ten istý prompt,
-    \item \textbf{Vyššia robustnosť pri nejednoznačných otázkach:} pri viacerých možných formuláciách odpovede sa model orientuje podľa preferenčného signálu, nie iba podľa maximum-likelihood cieľa,
-    \item \textbf{Výpočtová efektivita:} preferenčné ladenie sa realizuje bez budovania samostatného reward modelu, čo je vhodné pre obmedzené hardvérové zdroje.
+    \item \textbf{Lepšia kalibrácia výstupu:} model sa učí explicitne rozlišovať medzi lepšou a horšou odpoveďou na ten istý prompt.
+    \item \textbf{Vyššia robustnosť pri nejednoznačných otázkach:} model sa orientuje podľa preferenčného signálu, nie iba podľa maximum-likelihood cieľa.
+    \item \textbf{Výpočtová efektivita:} preferenčné ladenie sa realizuje bez budovania samostatného reward modelu. To je vhodné pre obmedzené hardvérové zdroje.
 \end{itemize}
 
-Takto navrhnutá kombinácia rešpektuje osvedčený rámec inštrukčného ladenia~\cite{Ouyang2022InstructGPT,Chung2022ScalingInstruction} a zároveň využíva moderný, implementačne jednoduchší mechanizmus preferenčnej optimalizácie~\cite{Rafailov2023DPO}. V kontexte energetického asistenta to vedie k odpovediam, ktoré sú nielen fakticky správne, ale aj konzistentnejšie z hľadiska praktickej použiteľnosti.
+Takto navrhnutá kombinácia rešpektuje osvedčený rámec inštrukčného ladenia~\cite{Ouyang2022InstructGPT,Chung2022ScalingInstruction}. Zároveň využíva moderný a implementačne jednoduchší mechanizmus preferenčnej optimalizácie~\cite{Rafailov2023DPO}. V kontexte energetického asistenta to vedie k odpovediam, ktoré sú nielen fakticky správne, ale aj konzistentné z hľadiska praktickej použiteľnosti.
 
-Predchádzajúce podsekcie definovali cieľ učenia (supervised signál a preferenčný signál). Nasledujúca sekcia preto opisuje technický mechanizmus, ktorým sa tieto ciele realizujú výpočtovo efektívnym spôsobom.
+Predchádzajúce podsekcie definovali cieľ učenia -- supervised signál a preferenčný signál. Nasledujúca sekcia opisuje technický mechanizmus, ktorým sa tieto ciele realizujú výpočtovo efektívnym spôsobom.
 
 \section{Metodológia QLoRA}
 
@@ -189,7 +189,7 @@ Nech má lineárna vrstva váhovú maticu $W$. V LoRA je aktualizácia definovan
 \end{equation}
 kde $A \in \mathbb{R}^{r \times d}$, $B \in \mathbb{R}^{k \times r}$ a $r$ je malý rank ($r \ll \min(d,k)$).
 
-V QLoRA sú pôvodné váhy $W$ uložené v 4-bitovej reprezentácii, no výpočty a učenie adaptérov prebiehajú vo vyššej presnosti (v projekte prevažne \texttt{bfloat16}). Tým sa znižujú nároky na VRAM pri zachovaní numerickej stability potrebnej na doučenie.
+V QLoRA sú pôvodné váhy $W$ uložené v 4-bitovej reprezentácii. Výpočty a učenie adaptérov prebiehajú vo vyššej presnosti (v projekte prevažne \texttt{bfloat16}). Tým sa znižujú nároky na VRAM pri zachovaní numerickej stability potrebnej na doučenie.
 
 \subsection{Prečo je QLoRA efektívna pri obmedzených zdrojoch}
 
@@ -201,51 +201,50 @@ Efektivita vyplýva z kombinácie viacerých faktorov:
     \item \textbf{Gradient accumulation:} umožňuje väčší efektívny batch bez nárastu okamžitej spotreby VRAM.
 \end{itemize}
 
-V praxi to umožňuje doučenie modelov triedy 4B na jednom GPU spotrebiteľskej triedy, čo zodpovedá hardvérovým obmedzeniam projektu.
+V praxi to umožňuje doučenie modelov triedy 4B na jednom GPU spotrebiteľskej triedy. To zodpovedá hardvérovým obmedzeniam projektu.
 
 \subsection{Výber trénovaných vrstiev (target modules)}
 
-Kľúčovým návrhovým rozhodnutím v PEFT časti pipeline je voľba vrstiev, do ktorých sa vkladajú LoRA adaptéry. V tejto práci sa cielene trénujú najmä projekčné matice v \textit{attention} a \textit{feed-forward} blokoch, pretože práve tieto vrstvy najviac ovplyvňujú spôsob, akým model vyberá relevantný kontext a ako formuluje finálnu odpoveď~\cite{Vaswani2017Attention,Hu2021LoRA}.
+Kľúčovým návrhovým rozhodnutím v PEFT časti pipeline je voľba vrstiev pre LoRA adaptéry. V tejto práci sa trénujú najmä projekčné matice v \textit{attention} a \textit{feed-forward} blokoch. Práve tieto vrstvy najviac ovplyvňujú výber relevantného kontextu a formuláciu finálnej odpovede~\cite{Vaswani2017Attention,Hu2021LoRA}.
 
-Vo všeobecnosti platí, že pre lineárnu vrstvu s maticou $W \in \mathbb{R}^{k \times d}$ má LoRA aktualizácia tvar $\Delta W = BA$. Počet nových trénovateľných parametrov je potom približne
-lineárny v ranku $r$ a rozmeroch projekčných matíc. To umožňuje pridávať adaptačnú kapacitu presne tam, kde prináša najväčší efekt, bez plného doučenia celej siete.
+Pre lineárnu vrstvu s maticou $W \in \mathbb{R}^{k \times d}$ má LoRA aktualizácia tvar $\Delta W = BA$. Počet nových trénovateľných parametrov je približne lineárny v ranku $r$ a rozmeroch projekčných matíc. Adaptačná kapacita sa tak pridáva presne tam, kde prináša najväčší efekt. Plné doučenie celej siete nie je potrebné.
 
 \subsubsection{Funkcia jednotlivých trénovaných vrstiev}
 
 Použitý výber vrstiev má jasnú funkčnú logiku:
 \begin{itemize}
-    \item \textbf{q\_proj, k\_proj, v\_proj} (resp. \textbf{qkv\_proj}): určujú, ktoré časti kontextu budú v mechanizme attention preferované. Ich adaptácia priamo ovplyvňuje, \enquote{na čo sa model pozerá} pri energetických otázkach.
+    \item \textbf{q\_proj, k\_proj, v\_proj} (resp. \textbf{qkv\_proj}): určujú, ktoré časti kontextu sú v mechanizme attention preferované. Ich adaptácia priamo ovplyvňuje, \enquote{na čo sa model pozerá} pri energetických otázkach.
     \item \textbf{o\_proj}: mieša výstupy attention hláv späť do reziduálneho toku. Táto vrstva ovplyvňuje, ako sa vybraná informácia premietne do ďalších blokov modelu.
-    \item \textbf{gate\_proj, up\_proj, down\_proj} (resp. \textbf{gate\_up\_proj} + \textbf{down\_proj}): tvoria jadro MLP/SwiGLU časti transformera. Adaptácia týchto vrstiev mení internú transformáciu reprezentácií, čo je dôležité pre doménový štýl odpovedí, terminológiu a štruktúru argumentácie.
+    \item \textbf{gate\_proj, up\_proj, down\_proj} (resp. \textbf{gate\_up\_proj} + \textbf{down\_proj}): tvoria jadro MLP/SwiGLU časti transformera. Ich adaptácia mení internú transformáciu reprezentácií. To je dôležité pre doménový štýl odpovedí, terminológiu a štruktúru argumentácie.
 \end{itemize}
 
-Zjednodušene: attention projekcie zlepšujú \textit{výber relevantných informácií}, zatiaľ čo MLP projekcie zlepšujú \textit{spôsob ich jazykového spracovania}.
+Zjednodušene: attention projekcie zlepšujú \textit{výber relevantných informácií}. MLP projekcie zlepšujú \textit{spôsob ich jazykového spracovania}.
 
 \subsubsection{Modelovo špecifická voľba vrstiev}
 
-Aj keď je metodika spoločná, konkrétne názvy modulov zodpovedajú implementácii danej modelovej rodiny:
+Metodika je spoločná, konkrétne názvy modulov sa však líšia podľa modelovej rodiny:
 \begin{itemize}
     \item \textbf{Phi-3 Mini (SFT):} \texttt{qkv\_proj}, \texttt{o\_proj}, \texttt{gate\_up\_proj}, \texttt{down\_proj}.
     \item \textbf{Gemma 3 a Qwen3 (SFT):} \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}.
-    \item \textbf{DPO fáza (unifikované presety):} rovnaká množina \texttt{q/k/v/o + gate/up/down} pre všetky tri modely, aby bola preferenčná optimalizácia metodicky konzistentná naprieč experimentmi.
+    \item \textbf{DPO fáza (unifikované presety):} rovnaká množina \texttt{q/k/v/o + gate/up/down} pre všetky tri modely. Tým je preferenčná optimalizácia metodicky konzistentná naprieč experimentmi.
 \end{itemize}
 
-Pri Phi-3 ide teda o rovnaké funkčné bloky ako pri Gemma/Qwen, ale vo fúzovanej implementácii (napr. \texttt{qkv\_proj} namiesto samostatných \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}).
+Pri Phi-3 ide o rovnaké funkčné bloky ako pri Gemma/Qwen. Líšia sa len fúzovanou implementáciou (napr. \texttt{qkv\_proj} namiesto samostatných \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}).
 
 \subsubsection{Prečo sa netrénujú všetky vrstvy modelu}
 
 Netrénovanie celej siete je zámerné rozhodnutie, nie obmedzenie:
 \begin{itemize}
     \item \textbf{Pamäť a stabilita:} plný fine-tuning 4B modelov by výrazne zvýšil VRAM nároky a riziko nestability tréningu.
-    \item \textbf{Zachovanie všeobecných schopností:} zmrazené základné váhy pomáhajú udržať všeobecné jazykové kompetencie modelu a znižujú riziko \enquote{catastrophic forgetting}.
-    \item \textbf{Lepší pomer kvalita/výpočtové náklady:} empiricky sa ukazuje, že adaptácia attention+MLP projekcií zachytáva podstatnú časť prínosu plného doučenia pri zlomku trénovateľných parametrov~\cite{Hu2021LoRA,Dettmers2023QLoRA}.
+    \item \textbf{Zachovanie všeobecných schopností:} zmrazené základné váhy udržujú všeobecné jazykové kompetencie modelu. Znižuje sa tým riziko \enquote{catastrophic forgetting}.
+    \item \textbf{Lepší pomer kvalita/výpočtové náklady:} adaptácia attention+MLP projekcií zachytáva podstatnú časť prínosu plného doučenia pri zlomku trénovateľných parametrov~\cite{Hu2021LoRA,Dettmers2023QLoRA}.
 \end{itemize}
 
-Z pohľadu tejto práce je preto voľba trénovaných vrstiev kompromisom medzi presnosťou doménovej adaptácie a praktickou realizovateľnosťou na dostupnom hardvéri.
+Voľba trénovaných vrstiev je teda kompromisom medzi presnosťou doménovej adaptácie a praktickou realizovateľnosťou na dostupnom hardvéri.
 
 \section{Implementácia inferencie a aplikačnej vrstvy}
 
-Okrem tréningovej pipeline bola v projekte implementovaná aj produkčne orientovaná inferenčná vrstva postavená na \texttt{FastAPI}. Aplikácia je organizovaná modulárne (\texttt{core}, \texttt{api}, \texttt{services}, \texttt{models}, \texttt{templates}, \texttt{static}), čo zjednodušuje rozšíriteľnosť aj údržbu.
+Okrem tréningovej pipeline bola implementovaná aj produkčne orientovaná inferenčná vrstva. Je postavená na \texttt{FastAPI}. Aplikácia je organizovaná modulárne (\texttt{core}, \texttt{api}, \texttt{services}, \texttt{models}, \texttt{templates}, \texttt{static}). Táto štruktúra zjednodušuje rozšíriteľnosť aj údržbu.
 
 Kľúčovou súčasťou je služba \texttt{ModelService}, ktorá:
 \begin{itemize}
@@ -255,13 +254,13 @@ Kľúčovou súčasťou je služba \texttt{ModelService}, ktorá:
     \item štandardizuje generovanie odpovedí cez jednotné parametre dekódovania.
 \end{itemize}
 
-Pre stabilné ukončenie generovania sa používajú modelovo špecifické stop tokeny (napr. \texttt{<|end|>} pre Phi-3, \texttt{<|im\_end|>} pre Qwen, \texttt{<end\_of\_turn>} pre Gemma). Výstup je následne čistený od technických tokenov a pri Qwen modeli aj od prípadných \texttt{<think>} blokov.
+Pre stabilné ukončenie generovania sa používajú modelovo špecifické stop tokeny. Napríklad \texttt{<|end|>} pre Phi-3, \texttt{<|im\_end|>} pre Qwen a \texttt{<end\_of\_turn>} pre Gemma. Výstup je následne čistený od technických tokenov. Pri Qwen modeli sa odstraňujú aj prípadné \texttt{<think>} bloky.
 
-API vrstva poskytuje najmä endpointy \texttt{/api/chat}, \texttt{/api/models} a \texttt{/api/health}. Komunikácia prebieha vo formáte chat správ (história + nový prompt), pričom systémový prompt je centrálne definovaný v konfigurácii a je jednotný pre všetky modely. Tým sa zabezpečuje porovnateľnosť odpovedí medzi modelmi aj konzistentné používateľské rozhranie.
+API vrstva poskytuje tri hlavné endpointy: \texttt{/api/chat}, \texttt{/api/models} a \texttt{/api/health}. Komunikácia prebieha vo formáte chat správ (história + nový prompt). Systémový prompt je centrálne definovaný v konfigurácii a je jednotný pre všetky modely. Tým sa zabezpečuje porovnateľnosť odpovedí a konzistentné používateľské rozhranie.
 
 \section{Vyhodnocovacia pipeline a reprodukovateľnosť}
 
-Pre experimentálne porovnanie modelov je pripravený samostatný evaluačný skript, ktorý meria kvalitatívne aj prevádzkové metriky:
+Pre experimentálne porovnanie modelov bol pripravený samostatný evaluačný skript. Meria kvalitatívne aj prevádzkové metriky:
 \begin{itemize}
     \item G-Eval (relevance, coherence, fluency, factual accuracy),
     \item perplexitu na testovacích vzorkách,
@@ -269,8 +268,8 @@ Pre experimentálne porovnanie modelov je pripravený samostatný evaluačný sk
     \item spotrebu VRAM pri rôznych dĺžkach kontextu.
 \end{itemize}
 
-Reprodukovateľnosť tréningu je podporená oddelením konfigurácií podľa modelových rodín a jednotnými vstupnými dátami. Výsledné adaptéry sú ukladané konzistentne, čo umožňuje ich okamžité použitie v API vrstve bez dodatočných konverzií.
+Reprodukovateľnosť tréningu je podporená oddelením konfigurácií podľa modelových rodín. Vstupné dáta sú pre všetky modely jednotné. Výsledné adaptéry sú ukladané konzistentne. To umožňuje ich okamžité použitie v API vrstve bez dodatočných konverzií.
 
 \section{Zhrnutie návrhu riešenia}
 
-Návrh riešenia je koncipovaný ako reprodukovateľná a výpočtovo efektívna pipeline: Instruct modely poskytujú vhodné počiatočné správanie asistenta, zdieľaný dátový loader zabezpečuje jednotný supervised signál, QLoRA umožňuje doménovú adaptáciu na obmedzenom hardvéri a DPO dopĺňa preferenčnú kalibráciu odpovedí. Výsledkom je praktický kompromis medzi kvalitou odpovedí, výpočtovou náročnosťou a rýchlosťou experimentálnych iterácií spolu s priamo nasaditeľným API riešením.
+Návrh riešenia je koncipovaný ako reprodukovateľná a výpočtovo efektívna pipeline. Instruct modely poskytujú vhodné počiatočné správanie asistenta. Zdieľaný dátový loader zabezpečuje jednotný supervised signál. QLoRA umožňuje doménovú adaptáciu na obmedzenom hardvéri. DPO dopĺňa preferenčnú kalibráciu odpovedí. Výsledkom je praktický kompromis medzi kvalitou odpovedí, výpočtovou náročnosťou a rýchlosťou experimentálnych iterácií. Súčasťou je aj priamo nasaditeľné API riešenie.
