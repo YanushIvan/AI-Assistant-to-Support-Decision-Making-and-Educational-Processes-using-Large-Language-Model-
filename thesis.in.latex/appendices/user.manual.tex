@@ -2,6 +2,139 @@
 
 \chapter{Používateľská príručka}\label{app:user.manual}
 
-Toto je príklad používateľskej príručky, ktorá môže byť súčasťou záverečnej práce. Obsahuje základné informácie o~tom, ako používať vytvorený systém alebo aplikáciu. Príručka by mala byť zrozumiteľná a poskytovať jasné pokyny pre používateľov.
+Táto príručka opisuje používanie aplikácie Energy AI Assistant. Zameriava sa na inštaláciu, spustenie a ovládanie rozhrania.
+
+\section{Požiadavky}
+
+Na spustenie aplikácie sú potrebné tieto komponenty:
+\begin{itemize}
+	\item Linux alebo macOS. Windows je možný cez WSL.
+	\item Python 3.10 alebo novší a nástroj \texttt{pip}.
+	\item Voľne dostupný priestor pre modely (niekoľko GB).
+	\item Internet na prvé stiahnutie základných modelov z Hugging Face.
+	\item GPU NVIDIA s CUDA pre rozumnú rýchlosť. Bez GPU je odozva pomalá.
+\end{itemize}
+
+Pri niektorých modeloch (napr. Gemma) môže byť potrebné schválenie licencie v~Hugging Face. V~takom prípade je nutné použiť osobný prístupový token.
 
 \section{Inštalácia}
+
+Postup je jednoduchý. Príklady sú uvedené pre Linux.
+
+\begin{enumerate}
+	\item Vytvorte virtuálne prostredie:
+\begin{verbatim}
+python3 -m venv venv
+source venv/bin/activate
+\end{verbatim}
+
+	\item Nainštalujte balíky:
+\begin{verbatim}
+pip install -r requirements.txt
+\end{verbatim}
+
+	\item Voliteľne vytvorte súbor \texttt{.env}:
+\begin{verbatim}
+cp .env.example .env
+\end{verbatim}
+\end{enumerate}
+
+Ak používate GPU, odporúča sa mať nainštalovanú CUDA verziu PyTorch. Presný príkaz závisí od verzie CUDA.
+
+\section{Spustenie aplikácie}
+
+Aplikáciu je možné spustiť viacerými spôsobmi.
+
+\textbf{Spustenie cez hlavný súbor:}
+\begin{verbatim}
+python energy_chat/main.py
+\end{verbatim}
+
+\textbf{Spustenie cez Uvicorn:}
+\begin{verbatim}
+python -m uvicorn energy_chat.main:app --host 0.0.0.0 --port 8000
+\end{verbatim}
+
+\textbf{Spustenie cez skript:}
+\begin{verbatim}
+./start_server.sh
+\end{verbatim}
+
+Po spustení sa v~konzole zobrazí adresa servera. Predvolený port je nastavený v~\texttt{energy_chat/core/config.py}. V~aktuálnej konfigurácii je to port 8002. V~prehliadači otvorte adresu \texttt{http://localhost:8002} alebo port, ktorý ste nastavili.
+
+\section{Použitie aplikácie}
+
+Rozhranie je webové. Postup práce je krátky:
+\begin{enumerate}
+	\item Otvorte aplikáciu v~prehliadači.
+	\item Počkajte, kým stav v~hlavičke ukáže \emph{Online}.
+	\item Vyberte model v~rozbaľovacom zozname.
+	\item Zadajte otázku do vstupného poľa.
+	\item Odošlite správu tlačidlom alebo klávesom Enter.
+\end{enumerate}
+
+Odpoveď sa zobrazí v~chatovom okne. Výstup má štruktúru ANSWER, KEY FACTS, RISK LEVEL a CONFIDENCE.
+
+\section{Ovládacie prvky a tlačidlá}
+
+V~nasledujúcich podsekciách sú popísané hlavné prvky rozhrania.
+
+\subsection{Výber modelu}
+
+Rozbaľovací zoznam v~hlavičke umožňuje zvoliť model. Zvolený model sa použije pre ďalšie odpovede.
+
+\begin{figure}[ht]
+	\centering
+	\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering
+	\textit{thesis.in.latex/figures/model_select.png}}}
+	\caption{Rozbaľovací zoznam pre výber modelu.}
+	\label{fig:user-manual-model-select}
+\end{figure}
+
+\subsection{Indikátor stavu}
+
+Indikátor zobrazuje dostupnosť služby. Stav \emph{Online} znamená, že API je pripravené.
+
+\begin{figure}[ht]
+	\centering
+	\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering
+	\textit{thesis.in.latex/figures/online.png}}}
+	\caption{Indikátor stavu služby.}
+	\label{fig:user-manual-status}
+\end{figure}
+
+\subsection{Rýchle návrhy otázok}
+
+Kliknutím na návrh sa text vloží do vstupného poľa. Ide o~rýchle ukážky tém.
+
+\begin{figure}[ht]
+	\centering
+	\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering
+	\textit{thesis.in.latex/figures/question_template.png}}}
+	\caption{Tlačidlá s~rýchlymi návrhmi otázok.}
+	\label{fig:user-manual-suggestions}
+\end{figure}
+
+\subsection{Vstupné pole}
+
+Do poľa sa píše otázka alebo inštrukcia. Enter odošle správu. Kombinácia Shift+Enter správu neodošle.
+
+\begin{figure}[ht]
+	\centering
+	\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering
+	\textit{thesis.in.latex/figures/question_field.png}}}
+	\caption{Vstupné pole pre zadanie otázky.}
+	\label{fig:user-manual-input}
+\end{figure}
+
+\subsection{Tlačidlo Odoslať}
+
+Tlačidlo so šípkou odošle aktuálnu otázku. Počas generovania je dočasne neaktívne.
+
+\begin{figure}[ht]
+	\centering
+	\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering
+	\textit{thesis.in.latex/figures/send_button.png}}}
+	\caption{Tlačidlo na odoslanie správy.}
+	\label{fig:user-manual-send}
+\end{figure}

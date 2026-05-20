@@ -11,4 +11,7 @@ trl
 protobuf
 scipy
 anthropic
+numpy
+requests
+tqdm
 
