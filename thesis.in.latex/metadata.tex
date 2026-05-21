@@ -3,7 +3,7 @@
 %% Document Metadata
 
 %% The location of your Assignment Statement (scanned as image)
-% \thesisspec{figures/thesisspec.png}
+\thesisspec{figures/zadavaci-list.png}
 
 \title{Development of an AI Assistant to Support Decision-Making and Educational Processes Using Fine-Tuning of Large Language Models}{Vývoj AI asistenta pre podporu rozhodovacích a vzdelávacích procesov s využitím doučenia veľkých jazykových modelov}
 \thesis{Bachelor thesis}{Bakalárska práca}  % typ prace
@@ -33,9 +33,25 @@
   konverzačný asistent, parameter-efektívne doučenie
 }
 
-% \declaration{
-%     Vyhlasujem, že som záverečnú prácu vypracovala samostatne s použitím uvedenej odbornej literatúry.
-% }
+\makeatletter
+\def\cestnevyhlasenie{\thispagestyle{empty}\vglue0pt
+\vfill
+\noindent\textbf{Čestné vyhlásenie}
+
+\bigskip
+
+Vyhlasujem, že som záverečnú prácu vypracoval samostatne s použitím uvedenej odbornej literatúry, ako aj s využitím nástrojov generatívnej umelej inteligencie v súlade s Metodickým pokynom o záverečných a kvalifikačných prácach a Etickým kódexom študenta Technickej univerzity v Košiciach. Umelá inteligencia bola použitá ako podporný nástroj bez porušenia zásad akademickej etiky a autorskej integrity.
+
+\bigskip
+
+\noindent \@college@city~\@submissionday.\@submissionmonth.\@submissionyear \hfill
+{\setlength\tabcolsep{0pt}\begin{tabular}[t]{c}
+\hbox to 50mm {\dotfill} \ \textit{\small Vlastnoručný podpis}
+\end{tabular}}
+\newpage
+}
+\makeatother
+\renewcommand{\declarationpage}{\cestnevyhlasenie}
 
 \abstract{%
   % english
