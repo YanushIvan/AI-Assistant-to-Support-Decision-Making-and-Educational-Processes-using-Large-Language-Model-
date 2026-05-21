@@ -68,8 +68,23 @@
 
 \include{appendices/00-list}
 
+\makeatletter
+\let\origaddcontentsline\addcontentsline
+\makeatother
+
 \appendix
 \setappendixstyle
+
+\makeatletter
+\renewcommand{\addcontentsline}[3]{%
+    \def\@tempa{#1}%
+    \def\@tempb{toc}%
+    \ifx\@tempa\@tempb
+    \else
+        \origaddcontentsline{#1}{#2}{#3}%
+    \fi
+}
+\makeatother
 
 
 \include{appendices/user.manual}

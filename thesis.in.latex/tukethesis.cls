@@ -439,7 +439,7 @@
 %%%%%
 
 \newcommand{\frontmatter}{
-    \pagenumbering{roman}
+    \pagenumbering{gobble}
     \pagestyle{empty}  % no page numbers until TOC
     \frontpage
     \titlepage
@@ -545,6 +545,8 @@
     \subsection*{\keywordsname}
 
     \@keywords
+
+    \newpage
 
     \iflanguage{slovak}{
         \subsection*{\secondabstractname}
