@@ -56,10 +56,6 @@ Formálne je štruktúra vzorky definovaná ako
 \end{equation}
 kde $p_i$ je používateľský vstup a $c_i$ je cieľová odpoveď v doménovom štýle.
 
-V použitej verzii projektu má dataset nasledujúci rozsah:
-\begin{itemize}
-    \item štruktúrovaný tréningový dataset: 1159 záznamov.
-\end{itemize}
 
 Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
 \begin{itemize}
@@ -112,7 +108,7 @@ Táto štruktúra je prínosná nielen pre používateľa. Model si vďaka nej o
 Implementácia SFT používa spoločnú dátovú vrstvu pre všetky tri modely. Táto vrstva zabezpečuje:
 \begin{itemize}
     \item načítanie JSONL datasetu cez knižnicu \texttt{datasets},
-    \item serializáciu dialógu \texttt{system/user/assistant} cez \texttt{tokenizer.apply\_chat\_template},
+    \item serializáciu dialógu \texttt{system/\allowbreak user/\allowbreak assistant} cez \texttt{tokenizer.\allowbreak apply\_chat\_\allowbreak template},
     \item vytvorenie \texttt{input\_ids}, \texttt{attention\_mask} a \texttt{labels},
     \item maskovanie všetkých netréningových tokenov hodnotou $-100$,
     \item rozdelenie datasetu na trénovaciu a validačnú časť.

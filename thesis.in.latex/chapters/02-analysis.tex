@@ -82,7 +82,7 @@ Táto práca používa viacfázový, ale výpočtovo úsporný postup: (1) inici
 \begin{description}
     \item[Hugging Face Transformers] Hlavná knižnica pre prácu s predtrénovanými modelmi. Poskytuje triedy \texttt{AutoModelForCausalLM} a \texttt{AutoTokenizer} pre jednotné načítanie modelov rôznych architektúr, ako aj \texttt{BitsAndBytesConfig} pre konfiguráciu kvantovania. Verzie použité v práci: 4.57.1 -- 5.2.0.
 
-    \item[PEFT] Knižnica od Hugging Face implementujúca metódy parameter-efektívneho doučenia. Použité komponenty: \texttt{LoraConfig}, \texttt{get\_peft\_model} a \texttt{prepare\_model\_for\_kbit\_training}. Verzia: 0.18.x.
+    \item[PEFT] Knižnica od Hugging Face implementujúca metódy parameter-efektívneho doučenia. Použité komponenty: \texttt{LoraConfig}, \texttt{get\_\allowbreak peft\_model} a \texttt{prepare\_model\_\allowbreak for\_kbit\_\allowbreak training}. Verzia: 0.18.x.
 
     \item[TRL (Transformer Reinforcement Learning)] Knižnica pre doučenie jazykových modelov. Použité súčasti: \texttt{SFTTrainer} pre inštrukčné doučenie a \texttt{DPOTrainer} pre optimalizáciu pomocou Direct Preference Optimization (DPO). Verzie: 0.25.1 -- 0.28.0.
 

@@ -170,7 +170,7 @@ Každý \texttt{train.py} skript sleduje jednotnú štruktúru:
  
     \item \textbf{Tréning:} Spustenie \texttt{trainer.train()}.
  
-    \item \textbf{Uloženie výsledku:} Uloženie natrénovaného LoRA adaptéra pomocou \texttt{save\_pretrained()}.
+    \item \textbf{Uloženie výsledku:} Uloženie natrénovaného LoRA adaptéra pomocou \texttt{save\_\allowbreak pretrained()}.
 \end{enumerate}
  
 \texttt{SFTTrainer} z knižnice TRL bol zvolený pre natívnu podporu supervised fine-tuning s PEFT adaptérmi. Knižnica automatizuje nastavenie loss funkcie, gradient accumulation a logovanie metrík. Tým sa znižuje riziko implementačných chýb.
@@ -341,7 +341,8 @@ Pre subjektívne metriky kvality sa používa externý LLM ako hodnotiteľ. Impl
 
 Konkrétne bol použitý Ollama model \texttt{Mistral-7B-v0.3} (tag \texttt{mistral:7b-v0.3}). Systémový prompt hodnotiteľa bol:
 \begin{verbatim}
-You are an expert evaluator for an AI assistant that answers questions about energy markets, climate policy, and financial regulation.
+You are an expert evaluator for an AI assistant that answers questions about energy markets,
+climate policy, and financial regulation.
 \end{verbatim}
 
 Hodnotenie prebiehalo tak, že Mistral dostal ako používateľský prompt otázku, odpoveď modelu a referenčnú odpoveď. Mal ohodnotiť štyri kritériá na škále 1--10, najprv si premyslieť hodnotenie a vrátiť výstup striktne vo formáte JSON. Štruktúra promptu bola:
@@ -357,13 +358,18 @@ AI RESPONSE:
 REFERENCE ANSWER:
 {reference}
 
-Score each criterion from 1 (worst) to 10 (best). Think step by step before scoring.
+Score each criterion from 1 (worst) to 10 (best).
+Think step by step before scoring.
 
 Criteria:
-1. RELEVANCE     — Does the response address the question directly and stay on topic?
-2. COHERENCE     — Is the response logically structured and internally consistent?
-3. FLUENCY       — Is the language natural, grammatically correct, and easy to read?
-4. FACTUAL_ACCURACY — Are the facts, statistics, and claims accurate?
+1. RELEVANCE     — Does the response address the question directly
+                 and stay on topic?
+2. COHERENCE     — Is the response logically structured
+                 and internally consistent?
+3. FLUENCY       — Is the language natural, grammatically correct,
+                 and easy to read?
+4. FACTUAL_ACCURACY — Are the facts, statistics,
+                 and claims accurate?
 
 Respond ONLY with valid JSON in this exact format:
 {
