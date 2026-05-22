@@ -1,3 +1,164 @@
 % !TEX root = ../thesis.tex
 
 \chapter{Systémová príručka}\label{app:system.manual}
+
+Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text je určený pre údržbu a ďalší vývoj.
+
+\section{Modul Energy Chat}
+
+\subsection{Hlavný vstup a API}
+
+\textbf{\path{energy_chat/main.py}} je hlavný vstup FastAPI aplikácie.
+\begin{description}
+	\item[\texttt{lifespan()}] Načítava model pri štarte a uvoľňuje zdroje pri ukončení.
+	\item[\texttt{startup\_event()}] Spúšťa načítanie modelu ako záloha pri štarte.
+	\item[\texttt{shutdown\_event()}] Zaznamená vypnutie aplikácie do logu.
+	\item[\texttt{get\_models\_root()}] Vráti zoznam dostupných modelov na root endpoint.
+	\item[\texttt{get\_index()}] Vracia HTML rozhranie chatu.
+	\item[\texttt{health\_check()}] Vráti stav aplikácie a načítania modelu.
+\end{description}
+
+\textbf{\path{energy_chat/api/routes/chat.py}} obsahuje API routy.
+\begin{description}
+	\item[\texttt{get\_models()}] Vracia zoznam modelov z konfigurácie.
+	\item[\texttt{answer\_prompt()}] Spracuje požiadavku, skladá správy a volá generovanie.
+	\item[\texttt{health\_check()}] Vracia stav služby a či je model načítaný.
+\end{description}
+
+\textbf{\path{energy_chat/api/__init__.py}} a \textbf{\path{energy_chat/api/routes/__init__.py}} re-exportujú router bez ďalšej logiky.
+
+\subsection{Konfigurácia a logovanie}
+
+\textbf{\path{energy_chat/core/config.py}} drží centrálne nastavenia.
+\begin{description}
+	\item[\texttt{Settings}] Uchováva konštanty a parametre aplikácie.
+	\item[\texttt{Settings.MODELS}] Skladá zoznam modelov a cesty k adapterom.
+	\item[\texttt{Settings.LORA\_ADAPTER\_PATH}] Vráti cestu k LoRA adapteru.
+	\item[\texttt{get\_settings()}] Vracia cachovanú inštanciu nastavení.
+\end{description}
+
+\textbf{\path{energy_chat/core/logger.py}} nastavuje logovanie.
+\begin{description}
+	\item[\texttt{setup\_logging()}] Vytvorí logger, handler a formát logov.
+\end{description}
+
+\textbf{\path{energy_chat/core/__init__.py}} re-exportuje nastavenia a logger bez ďalšej logiky.
+
+\subsection{Modely a služby}
+
+\textbf{\path{energy_chat/models/schemas.py}} definuje Pydantic schémy pre API. Sú to triedy \texttt{ChatMessage}, \texttt{ChatRequest}, \texttt{ChatResponse} a \texttt{ErrorResponse}.
+
+\textbf{\path{energy_chat/services/model_service.py}} riadi načítanie a generovanie.
+\begin{description}
+	\item[\texttt{ModelService.load\_models()}] Načíta model a tokenizer, prípadne adapter.
+	\item[\texttt{ModelService.generate\_response()}] Generuje odpoveď na základe správ.
+	\item[\texttt{ModelService.is\_loaded}] Vracia stav načítania modelu.
+	\item[\texttt{ModelService.should\_use\_system\_prompt}] Rozhoduje o použití system promptu.
+	\item[\texttt{get\_model\_service()}] Vráti singleton služby.
+\end{description}
+
+\textbf{\path{energy_chat/services/__init__.py}} re-exportuje službu bez ďalšej logiky.
+
+\subsection{Webové rozhranie}
+
+\textbf{\path{energy_chat/templates/index.html}} definuje štruktúru UI a akciu pre rýchle otázky.
+\begin{description}
+	\item[\texttt{askChip()}] Vloží text návrhu do vstupného poľa.
+\end{description}
+
+\textbf{\path{energy_chat/static/chat.js}} implementuje logiku UI.
+\begin{description}
+	\item[\texttt{loadModels()}] Načíta dostupné modely z API.
+	\item[\texttt{clearEmptyState()}] Odstráni prázdny stav z UI.
+	\item[\texttt{appendMessage()}] Pridá bublinu správy do chatu.
+	\item[\texttt{showTypingIndicator()}] Zobrazí indikátor písania.
+	\item[\texttt{removeTypingIndicator()}] Skryje indikátor písania.
+	\item[\texttt{sendMessage()}] Odošle požiadavku na API a uloží históriu.
+\end{description}
+
+\section{Konfigurácie tréningu}
+
+\subsection{Zdieľaný loader dát}
+
+\textbf{\path{training/shared/data_loader.py}} pripravuje dáta pre SFT tréning.
+\begin{description}
+	\item[\texttt{\_create\_masked\_labels()}] Maskuje system a user tokeny v labeloch.
+	\item[\texttt{load\_and\_prepare\_data()}] Načíta JSONL, tokenizuje a vytvorí split.
+\end{description}
+
+\subsection{Konfiguračné súbory}
+
+\textbf{\path{training/phi3/config.py}} definuje cesty, hyperparametre a \texttt{LORA\_CONFIG} pre Phi-3.
+\textbf{\path{training/gemma3/config.py}} definuje parametre pre Gemma-3 a \texttt{USE\_DOUBLE\_QUANT}.
+\textbf{\path{training/qwen3/config.py}} definuje parametre pre Qwen3 a LoRA moduly.
+
+\subsection{Spúšťače tréningu}
+
+\textbf{\path{training/phi3/train.py}} spúšťa SFT tréning pre Phi-3.
+\begin{description}
+	\item[\texttt{main()}] Načíta dáta, nastaví QLoRA, trénuje a uloží adapter.
+\end{description}
+
+\textbf{\path{training/gemma3/train.py}} spúšťa SFT tréning pre Gemma-3.
+\begin{description}
+	\item[\texttt{\_patched\_forward()}] Doplní \texttt{token\_type\_ids} pre text-only dáta.
+	\item[\texttt{main()}] Načíta dáta, trénuje a uloží adapter.
+\end{description}
+
+\textbf{\path{training/qwen3/train.py}} spúšťa SFT tréning pre Qwen3.
+\begin{description}
+	\item[\texttt{main()}] Načíta dáta, trénuje a uloží adapter.
+\end{description}
+
+\section{Skripty}
+
+\subsection{Vyhodnotenie modelov}
+
+\textbf{\path{scripts/evaluate_models.py}} porovnáva base, SFT a DPO modely.
+\begin{description}
+	\item[\texttt{log()}] Vypíše správu s časovou značkou.
+	\item[\texttt{vram\_allocated\_mb()}] Vráti obsadenú VRAM.
+	\item[\texttt{vram\_reserved\_mb()}] Vráti rezervovanú VRAM.
+	\item[\texttt{free\_vram()}] Uvoľní CUDA cache.
+	\item[\texttt{load\_dataset()}] Načíta JSONL dataset do zoznamu.
+	\item[\texttt{build\_stop\_token\_ids()}] Zvolí stop tokeny podľa modelu.
+	\item[\texttt{clean\_response()}] Odstráni špeciálne tokeny z výstupu.
+	\item[\texttt{format\_messages()}] Vytvorí prompt cez chat template.
+	\item[\texttt{load\_model\_and\_tokenizer()}] Načíta model a tokenizer, zlúči adapter.
+	\item[\texttt{unload\_model()}] Uvoľní model a tokenizer z pamäte.
+	\item[\texttt{\_generate\_in\_thread()}] Spustí generovanie v samostatnom vlákne.
+	\item[\texttt{generate\_with\_timing()}] Meria TTFT, TPS a vracia odpoveď.
+	\item[\texttt{compute\_perplexity()}] Počíta perplexitu nad completion tokenmi.
+	\item[\texttt{profile\_vram\_by\_context()}] Meria VRAM pri rôznych dĺžkach kontextu.
+	\item[\texttt{build\_judge\_client()}] Inicializuje klienta pre G-Eval.
+	\item[\texttt{judge\_response()}] Získa hodnotenie z judge modelu.
+	\item[\texttt{run\_judge\_evaluation()}] Agreguje skóre pre všetky vzorky.
+	\item[\texttt{evaluate\_model()}] Vykoná kompletné meranie pre jeden model.
+	\item[\texttt{save\_results()}] Uloží JSON a CSV výsledky.
+	\item[\texttt{print\_comparison\_table()}] Vypíše prehľadovú tabuľku.
+	\item[\texttt{parse\_args()}] Spracuje parametre príkazového riadku.
+	\item[\texttt{main()}] Riadi celý priebeh evaluácie.
+\end{description}
+
+\subsection{Samostatné hodnotenie}
+
+\textbf{\path{scripts/judge_only.py}} hodnotí už uložené výsledky cez Ollama.
+\begin{description}
+	\item[\texttt{log()}] Vypíše správu s časovou značkou.
+	\item[\texttt{build\_judge\_client()}] Overí dostupnosť Ollama a modelu.
+	\item[\texttt{judge\_response()}] Zavolá Ollama a vráti JSON hodnotenie.
+	\item[\texttt{judge\_results\_file()}] Prejde výsledky a uloží nové skóre.
+	\item[\texttt{main()}] Spracuje argumenty a spustí hodnotenie.
+\end{description}
+
+\subsection{DPO tréning}
+
+\textbf{\path{scripts/train_dpo.py}} trénuje DPO adaptéry pre vybrané modely.
+\begin{description}
+	\item[\texttt{parse\_args()}] Spracuje argumenty pre tréning.
+	\item[\texttt{maybe\_apply\_gemma\_patch()}] Aplikuje patch pre Gemma-3.
+	\item[\texttt{build\_bnb\_config()}] Vytvorí QLoRA konfiguráciu.
+	\item[\texttt{load\_quantized\_base()}] Načíta kvantizovaný základný model.
+	\item[\texttt{merge\_sft\_adapter()}] Zlúči SFT adapter do base modelu.
+	\item[\texttt{main()}] Pripraví dáta, spustí DPO tréning a uloží adapter.
+\end{description}
