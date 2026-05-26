@@ -16,12 +16,12 @@ Pre experimenty boli zvolené tri otvorené modely triedy SLM (Small Language Mo
 \end{itemize}
 
 Hlavné kritériá výberu:
-\begin{itemize}
+\begin{enumerate}
     \item veľkosť približne 4B parametrov, ktorá umožňuje tréning na obmedzených GPU zdrojoch pri 4-bitovej kvantizácii,
     \item dostupnosť oficiálnych instruction/chat verzií,
     \item kompatibilita s ekosystémom \texttt{transformers + peft + trl + bitsandbytes},
     \item architektonická rôznorodosť vhodná na porovnanie (odlišná tokenizácia, chat šablóny, mechanizmy attention a implementácia forward priechodu).
-\end{itemize}
+\end{enumerate}
 
 Z inžinierskeho pohľadu sa modely vhodne dopĺňajú. Phi-3 Mini je orientovaná na vysokú efektivitu pri malom počte parametrov. Gemma 3 4B dosahuje kvalitné sledovanie inštrukcií, no pri textovom tréningu vyžaduje špecifickú integráciu, keďže ide o multimodálnu architektúru. Qwen3 4B ponúka stabilný výkon v analytických úlohách a v konverzačnom režime.
 

@@ -84,7 +84,7 @@ Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
 \textbf{Systémový prompt:}
 Každý konfiguračný súbor obsahuje \texttt{SYSTEM\_PROMPT}. Ten definuje požadovanú štruktúru odpovede modelu. Prompt inštruuje model, aby vždy odpovedal v jasnej štruktúre. Táto obsahuje priamu odpoveď, kľúčové fakty s číselnými údajmi, hodnotenie úrovne rizika a mieru istoty (confidence). Takýto prístup zabezpečuje konzistentný výstup vhodný pre rozhodovacie procesy.
  
-\textbf{Kvantizačná konfigurácia:}
+\textbf{Kvantizačná konfigurácia:}\par\medskip
 \noindent\texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,\par\medskip
 \noindent\texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),\par\medskip
 \noindent\texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),\par\medskip
@@ -93,7 +93,7 @@ Každý konfiguračný súbor obsahuje \texttt{SYSTEM\_PROMPT}. Ten definuje po�
 Formát NF4 je kľúčovým riešením pre tréning miliardových modelov na spotrebiteľskom hardvéri. Bfloat16 bol zvolený ako compute dtype pre širokú hardvérovú podporu. Oproti float16 poskytuje lepšiu numerickú stabilitu.
  
 \textbf{LoRA konfigurácia:}
-Pre každý model je definovaný objekt \texttt{LORA\_CONFIG} z knižnice \texttt{peft}. Špecifikuje:
+Pre každý model je definovaný objekt \texttt{LORA\_CONFIG} z knižnice \texttt{peft}. Špecifikuje:\par\medskip
 \noindent\texttt{r} — hodnosť LoRA matíc (rank),\par\medskip
 \noindent\texttt{lora\_alpha} — škálovací faktor,\par\medskip
 \noindent\texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,\par\medskip
@@ -177,7 +177,7 @@ DPO maximalizuje pravdepodobnosť preferovaných odpovedí voči referenčnému 
  
 Skript je navrhnutý ako command-line nástroj. Obsahuje vopred definované presety pre jednotlivé modely. Hlavné komponenty sú:
  
-\textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}. Každý preset špecifikuje:
+\textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}. Každý preset špecifikuje:\par\medskip
 \noindent\texttt{base\_model\_id} — identifikátor základného modelu,\par\medskip
 \noindent\texttt{sft\_adapter\_path} — referencia na SFT adaptér ako východiskový bod,\par\medskip
 \noindent\texttt{output\_dir} — označenie výstupu DPO adaptéra,\par\medskip
@@ -186,7 +186,7 @@ Skript je navrhnutý ako command-line nástroj. Obsahuje vopred definované pres
 \noindent\texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,\par\medskip
 \noindent\texttt{trust\_remote\_code} — povolenie spustenia vlastného kódu modelu.\par\medskip
  
-\textbf{Argument parsing:} Skript akceptuje nasledovné parametre:
+\textbf{Argument parsing:} Skript akceptuje nasledovné parametre:\par\medskip
 \noindent\texttt{--model} — výber presetu (povinný parameter),\par\medskip
 \noindent\texttt{--dataset} — výber DPO datasetu,\par\medskip
 \noindent\texttt{--beta} — DPO regularizačný parameter (default: 0.1),\par\medskip
@@ -264,16 +264,14 @@ Evaluačný skript je navrhnutý ako samostatný nástroj. Dokáže vyhodnotiť 
  
 Skript definuje dve hlavné dátové štruktúry:
  
-\textbf{SampleResult:} Reprezentuje výsledok generovania pre jednu otázku. Obsahuje:
-\begin{itemize}
-    \item \texttt{question} — vstupná otázka,
-    \item \texttt{reference} — referenčná odpoveď z datasetu,
-    \item \texttt{response} — vygenerovaná odpoveď modelu,
-    \item \texttt{ttft\_s} — Time To First Token v sekundách,
-    \item \texttt{tps} — Tokens Per Second,
-    \item \texttt{output\_tokens} — počet vygenerovaných tokenov,
-    \item \texttt{vram\_during\_gen\_mb} — VRAM spotreba počas generovania.
-\end{itemize}
+\textbf{SampleResult:} Reprezentuje výsledok generovania pre jednu otázku. Obsahuje:\par\medskip
+\noindent\texttt{question} — vstupná otázka,\par\medskip
+\noindent\texttt{reference} — referenčná odpoveď z datasetu,\par\medskip
+\noindent\texttt{response} — vygenerovaná odpoveď modelu,\par\medskip
+\noindent\texttt{ttft\_s} — Time To First Token v sekundách,\par\medskip
+\noindent\texttt{tps} — Tokens Per Second,\par\medskip
+\noindent\texttt{output\_tokens} — počet vygenerovaných tokenov,\par\medskip
+\noindent\texttt{vram\_during\_gen\_mb} — VRAM spotreba počas generovania.\par\medskip
  
 \textbf{ModelMetrics:} Agregované metriky pre celý model:
 \begin{itemize}
