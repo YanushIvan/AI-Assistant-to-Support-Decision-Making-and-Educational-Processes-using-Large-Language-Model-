@@ -32,14 +32,14 @@ Výhodou tohto prístupu bolo rýchle škálovanie obsahu. Jednotná metodológi
 Tvorba datasetu nebola jednorazová akcia. Išlo o iteratívny proces, v ktorom sa postupne zvyšoval rozsah aj kvalita vzoriek. V počiatočných fázach mal dataset niekoľko desiatok príkladov. To bolo nedostatočné pre doménovú adaptáciu. Postupným pridávaním nových zdrojov a generovaním inštrukcií sa dataset rozrástol na viac ako tisíc záznamov.
  
 Paralelne s kvantitatívnym rastom dochádzalo aj ku kvalitatívnemu zlepšovaniu:
-\noindent spresnila sa formulácia odpovedí podľa požadovaného formátu (\texttt{ANSWER}, \texttt{KEY FACTS}, \texttt{RISK LEVEL}, \texttt{CONFIDENCE}),\par
-\noindent rozšíril sa tematický záber o nové energetické témy a praktické scenáre,\par
-\noindent znížil sa podiel príliš všeobecných alebo redundantných príkladov,\par
-\noindent zlepšila sa faktická presnosť odpovedí vďaka užšiemu výberu zdrojov.\par
+\noindent spresnila sa formulácia odpovedí podľa požadovaného formátu (\texttt{ANSWER}, \texttt{KEY FACTS}, \texttt{RISK LEVEL}, \texttt{CONFIDENCE}),\par\medskip
+\noindent rozšíril sa tematický záber o nové energetické témy a praktické scenáre,\par\medskip
+\noindent znížil sa podiel príliš všeobecných alebo redundantných príkladov,\par\medskip
+\noindent zlepšila sa faktická presnosť odpovedí vďaka užšiemu výberu zdrojov.\par\medskip
  
 Výsledkom tejto fázy boli dva hlavné datasety:
-\noindent štruktúrovaný tréningový dataset (1159 záznamov) určený pre SFT s dôrazom na konzistentnú štruktúru odpovede,\par
-\noindent preferenčný dataset (1126 záznamov) vo formáte \texttt{prompt/chosen/rejected} určený pre DPO.\par
+\noindent štruktúrovaný tréningový dataset (1159 záznamov) určený pre SFT s dôrazom na konzistentnú štruktúru odpovede,\par\medskip
+\noindent preferenčný dataset (1126 záznamov) vo formáte \texttt{prompt/chosen/rejected} určený pre DPO.\par\medskip
  
 \section{Architektúra tréningového systému}
  
@@ -69,36 +69,36 @@ Každý model má vlastný \texttt{config.py}. Ten definuje všetky parametre po
 Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
  
 \textbf{Zdroje a výstupy:}
-\noindent\texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,\par
-\noindent\texttt{DATASET\_PATH} — výber tréningového datasetu,\par
-\noindent\texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.\par
+\noindent\texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,\par\medskip
+\noindent\texttt{DATASET\_PATH} — výber tréningového datasetu,\par\medskip
+\noindent\texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.\par\medskip
  
 \textbf{Hyperparametre tréningu:}
-\noindent\texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,\par
-\noindent\texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,\par
-\noindent\texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,\par
-\noindent\texttt{LEARNING\_RATE} — miera učenia,\par
-\noindent\texttt{MAX\_SEQ\_LENGTH} — maximálna dĺžka vstupnej sekvencie,\par
-\noindent\texttt{TEST\_SIZE} — podiel validačných dát.\par
+\noindent\texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,\par\medskip
+\noindent\texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,\par\medskip
+\noindent\texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,\par\medskip
+\noindent\texttt{LEARNING\_RATE} — miera učenia,\par\medskip
+\noindent\texttt{MAX\_SEQ\_LENGTH} — maximálna dĺžka vstupnej sekvencie,\par\medskip
+\noindent\texttt{TEST\_SIZE} — podiel validačných dát.\par\medskip
  
 \textbf{Systémový prompt:}
 Každý konfiguračný súbor obsahuje \texttt{SYSTEM\_PROMPT}. Ten definuje požadovanú štruktúru odpovede modelu. Prompt inštruuje model, aby vždy odpovedal v jasnej štruktúre. Táto obsahuje priamu odpoveď, kľúčové fakty s číselnými údajmi, hodnotenie úrovne rizika a mieru istoty (confidence). Takýto prístup zabezpečuje konzistentný výstup vhodný pre rozhodovacie procesy.
  
 \textbf{Kvantizačná konfigurácia:}
-\noindent\texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,\par
-\noindent\texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),\par
-\noindent\texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),\par
-\noindent\texttt{USE\_DOUBLE\_QUANT} — dvojitá kvantizácia (len pre Gemma-3).\par
+\noindent\texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,\par\medskip
+\noindent\texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),\par\medskip
+\noindent\texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),\par\medskip
+\noindent\texttt{USE\_DOUBLE\_QUANT} — dvojitá kvantizácia (len pre Gemma-3).\par\medskip
  
 Formát NF4 je kľúčovým riešením pre tréning miliardových modelov na spotrebiteľskom hardvéri. Bfloat16 bol zvolený ako compute dtype pre širokú hardvérovú podporu. Oproti float16 poskytuje lepšiu numerickú stabilitu.
  
 \textbf{LoRA konfigurácia:}
 Pre každý model je definovaný objekt \texttt{LORA\_CONFIG} z knižnice \texttt{peft}. Špecifikuje:
-\noindent\texttt{r} — hodnosť LoRA matíc (rank),\par
-\noindent\texttt{lora\_alpha} — škálovací faktor,\par
-\noindent\texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,\par
-\noindent\texttt{bias} — spracovanie bias parametrov,\par
-\noindent\texttt{task\_type} — typ úlohy (\texttt{CAUSAL\_LM}).\par
+\noindent\texttt{r} — hodnosť LoRA matíc (rank),\par\medskip
+\noindent\texttt{lora\_alpha} — škálovací faktor,\par\medskip
+\noindent\texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,\par\medskip
+\noindent\texttt{bias} — spracovanie bias parametrov,\par\medskip
+\noindent\texttt{task\_type} — typ úlohy (\texttt{CAUSAL\_LM}).\par\medskip
  
 Voľba target modulov sa líši medzi modelmi. Phi-3 používa \texttt{qkv\_proj} (zlúčená attention projekcia) a \texttt{gate\_up\_proj} (zlúčená MLP projekcia). Gemma-3 a Qwen3 používajú štandardné samostatné projekčné vrstvy (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}). Rozdiel vyplýva z odlišnej architektúry jednotlivých modelov.
  
@@ -178,21 +178,21 @@ DPO maximalizuje pravdepodobnosť preferovaných odpovedí voči referenčnému 
 Skript je navrhnutý ako command-line nástroj. Obsahuje vopred definované presety pre jednotlivé modely. Hlavné komponenty sú:
  
 \textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}. Každý preset špecifikuje:
-\noindent\texttt{base\_model\_id} — identifikátor základného modelu,\par
-\noindent\texttt{sft\_adapter\_path} — referencia na SFT adaptér ako východiskový bod,\par
-\noindent\texttt{output\_dir} — označenie výstupu DPO adaptéra,\par
-\noindent\texttt{compute\_dtype} — dátový typ (bfloat16),\par
-\noindent\texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),\par
-\noindent\texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,\par
-\noindent\texttt{trust\_remote\_code} — povolenie spustenia vlastného kódu modelu.\par
+\noindent\texttt{base\_model\_id} — identifikátor základného modelu,\par\medskip
+\noindent\texttt{sft\_adapter\_path} — referencia na SFT adaptér ako východiskový bod,\par\medskip
+\noindent\texttt{output\_dir} — označenie výstupu DPO adaptéra,\par\medskip
+\noindent\texttt{compute\_dtype} — dátový typ (bfloat16),\par\medskip
+\noindent\texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),\par\medskip
+\noindent\texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,\par\medskip
+\noindent\texttt{trust\_remote\_code} — povolenie spustenia vlastného kódu modelu.\par\medskip
  
 \textbf{Argument parsing:} Skript akceptuje nasledovné parametre:
-\noindent\texttt{--model} — výber presetu (povinný parameter),\par
-\noindent\texttt{--dataset} — výber DPO datasetu,\par
-\noindent\texttt{--beta} — DPO regularizačný parameter (default: 0.1),\par
-\noindent\texttt{--epochs} — počet tréningových epoch (default: 1),\par
-\noindent\texttt{--lr} — learning rate (default: 5e-5),\par
-\noindent hyperparametre pre batch size, gradient accumulation, max length a ďalšie.\par
+\noindent\texttt{--model} — výber presetu (povinný parameter),\par\medskip
+\noindent\texttt{--dataset} — výber DPO datasetu,\par\medskip
+\noindent\texttt{--beta} — DPO regularizačný parameter (default: 0.1),\par\medskip
+\noindent\texttt{--epochs} — počet tréningových epoch (default: 1),\par\medskip
+\noindent\texttt{--lr} — learning rate (default: 5e-5),\par\medskip
+\noindent hyperparametre pre batch size, gradient accumulation, max length a ďalšie.\par\medskip
  
 Hodnota \texttt{beta=0.1} poskytuje dostatočnú regularizáciu bez prílišného obmedzenia. Nízky learning rate \texttt{5e-5} zabraňuje destabilizácii SFT modelu. Jedna epocha je pre preferenčnú kalibráciu zvyčajne postačujúca.
  

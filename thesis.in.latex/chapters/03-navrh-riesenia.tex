@@ -66,10 +66,10 @@ Pre preferenčnú optimalizáciu je navyše pripravený samostatný dataset:
 
 Dáta boli systematicky zbierané z rôznych relevantných zdrojov. Cieľom bola vysoká kvalita aj diverzita učebného materiálu. Zdrojmi dát boli:
 
-\noindent\textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od \textit{IRENA} (International Renewable Energy Agency), \textit{IEA} (International Energy Agency) a \textit{ACER} (Agency for the Cooperation of Energy Regulators). Tieto zdroje poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch a trhu s energiami.\par
-\noindent\textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textit{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov.\par
-\noindent\textbf{Vedecké články a výskumné práce} -- články z platformy \textit{arXiv} a ďalších vedeckých databáz. Pokrývajú trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov.\par
-\noindent\textbf{Prípadové štúdie a praktické údaje} -- reálne údaje z energetických projektov a operácií energetických systémov.\par
+\noindent\textbf{Medzinárodné energetické organizácie} -- publikácie, správy a štatistické údaje od \textit{IRENA} (International Renewable Energy Agency), \textit{IEA} (International Energy Agency) a \textit{ACER} (Agency for the Cooperation of Energy Regulators). Tieto zdroje poskytujú aktuálne údaje o energetike, obnoviteľných zdrojoch a trhu s energiami.\par\medskip
+\noindent\textbf{Regulačné a trhové údaje} -- údaje o energetických trhoch a cenách z \textit{ESMA} (European Securities and Markets Authority) a ďalších regulačných zdrojov.\par\medskip
+\noindent\textbf{Vedecké články a výskumné práce} -- články z platformy \textit{arXiv} a ďalších vedeckých databáz. Pokrývajú trendy v energetike, vykurovacích sústavách, fotovoltike, akumulácii energie a efektívnosti energetických systémov.\par\medskip
+\noindent\textbf{Prípadové štúdie a praktické údaje} -- reálne údaje z energetických projektov a operácií energetických systémov.\par\medskip
 
 
 Táto diverzita zdrojov zabezpečila, že dataset obsahuje aktuálne vedecké poznatky, regulačné informácie aj praktické znalosti. Dáta boli následne spracované a štandardizované do formátu prompt-completion. Dôraz bol kladený na faktuálnu presnosť a relevantnosť pre energetické úlohy.
@@ -78,9 +78,9 @@ Táto diverzita zdrojov zabezpečila, že dataset obsahuje aktuálne vedecké po
 
 Zvolený formát prompt-completion je pre tento scenár vhodný z troch dôvodov:
 
-\noindent\textbf{Priama kompatibilita s Causal LM.} Dialóg sa serializuje cez chat-template tokenizéra do sekvencie system/user/assistant. Model sa učí predikovať tokeny asistenta.\par
-\noindent\textbf{Kontrolovaný tréningový signál.} Tokeny systémovej a používateľskej časti majú v pipeline hodnotu $-100$. Loss sa počíta iba z completion časti. Model sa preto netrestá za reprodukciu vstupu a sústredí sa na kvalitu odpovede.\par
-\noindent\textbf{Stabilita pre PEFT.} Pri QLoRA sa aktualizuje len obmedzený počet parametrov (LoRA adaptéry). Jednoznačný supervised signál je preto kľúčový. Štruktúrovaný completion tento signál poskytuje.\par
+\noindent\textbf{Priama kompatibilita s Causal LM.} Dialóg sa serializuje cez chat-template tokenizéra do sekvencie system/user/assistant. Model sa učí predikovať tokeny asistenta.\par\medskip
+\noindent\textbf{Kontrolovaný tréningový signál.} Tokeny systémovej a používateľskej časti majú v pipeline hodnotu $-100$. Loss sa počíta iba z completion časti. Model sa preto netrestá za reprodukciu vstupu a sústredí sa na kvalitu odpovede.\par\medskip
+\noindent\textbf{Stabilita pre PEFT.} Pri QLoRA sa aktualizuje len obmedzený počet parametrov (LoRA adaptéry). Jednoznačný supervised signál je preto kľúčový. Štruktúrovaný completion tento signál poskytuje.\par\medskip
 
 V štruktúrovanej verzii odpovede sa používa šablóna:
 \begin{verbatim}
@@ -184,10 +184,10 @@ V QLoRA sú pôvodné váhy $W$ uložené v 4-bitovej reprezentácii. Výpočty 
 \subsection{Prečo je QLoRA efektívna pri obmedzených zdrojoch}
 
 Efektivita vyplýva z kombinácie viacerých faktorov:
-\noindent\textbf{Nižšie pamäťové nároky na váhy:} prechod zo 16-bitovej na 4-bitovú reprezentáciu zmenšuje pamäťový footprint modelu približne 4-násobne.\par
-\noindent\textbf{Malý počet trénovateľných parametrov:} učia sa len LoRA adaptéry, nie celé váhy modelu.\par
-\noindent\textbf{Optimalizátor pre low-precision režim:} použitý \texttt{paged\_adamw\_8bit} znižuje nároky na pamäť stavov optimalizátora.\par
-\noindent\textbf{Gradient accumulation:} umožňuje väčší efektívny batch bez nárastu okamžitej spotreby VRAM.\par
+\noindent\textbf{Nižšie pamäťové nároky na váhy:} prechod zo 16-bitovej na 4-bitovú reprezentáciu zmenšuje pamäťový footprint modelu približne 4-násobne.\par\medskip
+\noindent\textbf{Malý počet trénovateľných parametrov:} učia sa len LoRA adaptéry, nie celé váhy modelu.\par\medskip
+\noindent\textbf{Optimalizátor pre low-precision režim:} použitý \texttt{paged\_adamw\_8bit} znižuje nároky na pamäť stavov optimalizátora.\par\medskip
+\noindent\textbf{Gradient accumulation:} umožňuje väčší efektívny batch bez nárastu okamžitej spotreby VRAM.\par\medskip
 
 V praxi to umožňuje doučenie modelov triedy 4B na jednom GPU spotrebiteľskej triedy. To zodpovedá hardvérovým obmedzeniam projektu.
 
