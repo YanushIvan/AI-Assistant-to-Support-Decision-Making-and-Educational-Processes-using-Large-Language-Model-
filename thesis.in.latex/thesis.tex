@@ -58,6 +58,8 @@
 
 %% Bibliography, glossary, acronyms
 \glsaddall[types={\acronymtype}]
+\let\cleardoublepage\clearpage
+\backmatter{}
 
 
 %% -----------------------------------------------------------------
@@ -105,19 +107,6 @@
 \else
 \appendix
 \setappendixstyle
-
-\makeatletter
-\newcommand{\dummyappendixlabel}[2]{%
-    \refstepcounter{chapter}%
-    \phantomsection%
-    \edef\@currentlabelname{#2}%
-    \label{#1}%
-}
-\makeatother
-
-\setcounter{chapter}{0}
-\dummyappendixlabel{app:user.manual}{Používateľská príručka}
-\dummyappendixlabel{app:system.manual}{Systémová príručka}
 
 {%
 \let\cleardoublepage\clearpage
