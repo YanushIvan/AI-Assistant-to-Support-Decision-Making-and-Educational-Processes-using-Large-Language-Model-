@@ -183,7 +183,7 @@ V QLoRA sú pôvodné váhy $W$ uložené v 4-bitovej reprezentácii. Výpočty 
 
 \subsection{Prečo je QLoRA efektívna pri obmedzených zdrojoch}
 
-Efektivita vyplýva z kombinácie viacerých faktorov:
+Efektivita vyplýva z kombinácie viacerých faktorov:\par\medskip
 \noindent\textbf{Nižšie pamäťové nároky na váhy:} prechod zo 16-bitovej na 4-bitovú reprezentáciu zmenšuje pamäťový footprint modelu približne 4-násobne.\par\medskip
 \noindent\textbf{Malý počet trénovateľných parametrov:} učia sa len LoRA adaptéry, nie celé váhy modelu.\par\medskip
 \noindent\textbf{Optimalizátor pre low-precision režim:} použitý \texttt{paged\_adamw\_8bit} znižuje nároky na pamäť stavov optimalizátora.\par\medskip
@@ -199,12 +199,10 @@ Pre lineárnu vrstvu s maticou $W \in \mathbb{R}^{k \times d}$ má LoRA aktualiz
 
 \subsubsection{Funkcia jednotlivých trénovaných vrstiev}
 
-Použitý výber vrstiev má jasnú funkčnú logiku:
-\begin{itemize}
-    \item \textbf{q\_proj, k\_proj, v\_proj} (resp. \textbf{qkv\_proj}): určujú, ktoré časti kontextu sú v mechanizme attention preferované. Ich adaptácia priamo ovplyvňuje, \enquote{na čo sa model pozerá} pri energetických otázkach.
-    \item \textbf{o\_proj}: mieša výstupy attention hláv späť do reziduálneho toku. Táto vrstva ovplyvňuje, ako sa vybraná informácia premietne do ďalších blokov modelu.
-    \item \textbf{gate\_proj, up\_proj, down\_proj} (resp. \textbf{gate\_up\_proj} + \textbf{down\_proj}): tvoria jadro MLP/SwiGLU časti transformera. Ich adaptácia mení internú transformáciu reprezentácií. To je dôležité pre doménový štýl odpovedí, terminológiu a štruktúru argumentácie.
-\end{itemize}
+Použitý výber vrstiev má jasnú funkčnú logiku:\par\medskip
+\noindent\textbf{q\_proj, k\_proj, v\_proj} (resp. \textbf{qkv\_proj}): určujú, ktoré časti kontextu sú v mechanizme attention preferované. Ich adaptácia priamo ovplyvňuje, \enquote{na čo sa model pozerá} pri energetických otázkach.\par\medskip
+\noindent\textbf{o\_proj}: mieša výstupy attention hláv späť do reziduálneho toku. Táto vrstva ovplyvňuje, ako sa vybraná informácia premietne do ďalších blokov modelu.\par\medskip
+\noindent\textbf{gate\_proj, up\_proj, down\_proj} (resp. \textbf{gate\_up\_proj} + \textbf{down\_proj}): tvoria jadro MLP/SwiGLU časti transformera. Ich adaptácia mení internú transformáciu reprezentácií. To je dôležité pre doménový štýl odpovedí, terminológiu a štruktúru argumentácie.\par\medskip
 
 Zjednodušene: attention projekcie zlepšujú \textit{výber relevantných informácií}. MLP projekcie zlepšujú \textit{spôsob ich jazykového spracovania}.
 
@@ -222,11 +220,11 @@ Pri Phi-3 ide o rovnaké funkčné bloky ako pri Gemma/Qwen. Líšia sa len fúz
 \subsubsection{Prečo sa netrénujú všetky vrstvy modelu}
 
 Netrénovanie celej siete je zámerné rozhodnutie, nie obmedzenie:
-\begin{itemize}
+\begin{enumerate}
     \item \textbf{Pamäť a stabilita:} plný fine-tuning 4B modelov by výrazne zvýšil VRAM nároky a riziko nestability tréningu.
     \item \textbf{Zachovanie všeobecných schopností:} zmrazené základné váhy udržujú všeobecné jazykové kompetencie modelu. Znižuje sa tým riziko \enquote{catastrophic forgetting}.
     \item \textbf{Lepší pomer kvalita/výpočtové náklady:} adaptácia attention+MLP projekcií zachytáva podstatnú časť prínosu plného doučenia pri zlomku trénovateľných parametrov~\cite{Hu2021LoRA,Dettmers2023QLoRA}.
-\end{itemize}
+\end{enumerate}
 
 Voľba trénovaných vrstiev je teda kompromisom medzi presnosťou doménovej adaptácie a praktickou realizovateľnosťou na dostupnom hardvéri.
 

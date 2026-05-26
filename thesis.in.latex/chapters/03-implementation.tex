@@ -68,12 +68,12 @@ Každý model má vlastný \texttt{config.py}. Ten definuje všetky parametre po
  
 Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
  
-\textbf{Zdroje a výstupy:}
+\textbf{Zdroje a výstupy:}\par\medskip
 \noindent\texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,\par\medskip
 \noindent\texttt{DATASET\_PATH} — výber tréningového datasetu,\par\medskip
 \noindent\texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.\par\medskip
  
-\textbf{Hyperparametre tréningu:}
+\textbf{Hyperparametre tréningu:}\par\medskip
 \noindent\texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,\par\medskip
 \noindent\texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,\par\medskip
 \noindent\texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,\par\medskip
@@ -104,7 +104,7 @@ Voľba target modulov sa líši medzi modelmi. Phi-3 používa \texttt{qkv\_proj
  
 \subsection{Hyperparametrická optimalizácia jednotlivých modelov}
  
-Hodnoty hyperparametrov boli volené na základe empirického testovania. Zohľadnené boli aj odporúčania z dokumentácie modelov a obmedzenia dostupného hardvéru.
+Hodnoty hyperparametrov boli volené na základe empirického testovania. Zohľadnené boli aj odporúčania z dokumentácie modelov a obmedzenia dostupného hardvéru.\par\medskip
  
 \textbf{Phi-3 Mini:}
 \begin{itemize}
