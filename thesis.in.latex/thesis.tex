@@ -70,7 +70,10 @@
 %% -----------------------------------------------------------------
 
 \ifincludeappendices
-\include{appendices/00-list}
+{%
+\let\cleardoublepage\clearpage
+\input{appendices/00-list}
+}
 
 \makeatletter
 \let\origaddcontentsline\addcontentsline
@@ -116,7 +119,10 @@
 \dummyappendixlabel{app:user.manual}{Používateľská príručka}
 \dummyappendixlabel{app:system.manual}{Systémová príručka}
 
-\include{appendices/00-list}
+{%
+\let\cleardoublepage\clearpage
+\input{appendices/00-list}
+}
 \fi
 
 
