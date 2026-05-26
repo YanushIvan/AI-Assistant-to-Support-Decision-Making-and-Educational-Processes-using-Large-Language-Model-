@@ -6,7 +6,7 @@ from peft import LoraConfig
 # ── Paths ─────────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
-
+#ad
 MODEL_ID     = "google/gemma-3-4b-it"
 DATASET_PATH = os.path.join(_ROOT, "data", "energy_data_structured.jsonl")
 OUTPUT_DIR   = os.path.join(_ROOT, "gemma3_4b_energy_finetune_structured")
