@@ -32,18 +32,14 @@ Výhodou tohto prístupu bolo rýchle škálovanie obsahu. Jednotná metodológi
 Tvorba datasetu nebola jednorazová akcia. Išlo o iteratívny proces, v ktorom sa postupne zvyšoval rozsah aj kvalita vzoriek. V počiatočných fázach mal dataset niekoľko desiatok príkladov. To bolo nedostatočné pre doménovú adaptáciu. Postupným pridávaním nových zdrojov a generovaním inštrukcií sa dataset rozrástol na viac ako tisíc záznamov.
  
 Paralelne s kvantitatívnym rastom dochádzalo aj ku kvalitatívnemu zlepšovaniu:
-\begin{itemize}
-    \item spresnila sa formulácia odpovedí podľa požadovaného formátu (\texttt{ANSWER}, \texttt{KEY FACTS}, \texttt{RISK LEVEL}, \texttt{CONFIDENCE}),
-    \item rozšíril sa tematický záber o nové energetické témy a praktické scenáre,
-    \item znížil sa podiel príliš všeobecných alebo redundantných príkladov,
-    \item zlepšila sa faktická presnosť odpovedí vďaka užšiemu výberu zdrojov.
-\end{itemize}
+\noindent spresnila sa formulácia odpovedí podľa požadovaného formátu (\texttt{ANSWER}, \texttt{KEY FACTS}, \texttt{RISK LEVEL}, \texttt{CONFIDENCE}),\par
+\noindent rozšíril sa tematický záber o nové energetické témy a praktické scenáre,\par
+\noindent znížil sa podiel príliš všeobecných alebo redundantných príkladov,\par
+\noindent zlepšila sa faktická presnosť odpovedí vďaka užšiemu výberu zdrojov.\par
  
 Výsledkom tejto fázy boli dva hlavné datasety:
-\begin{itemize}
-    \item štruktúrovaný tréningový dataset (1159 záznamov) určený pre SFT s dôrazom na konzistentnú štruktúru odpovede,
-    \item preferenčný dataset (1126 záznamov) vo formáte \texttt{prompt/chosen/rejected} určený pre DPO.
-\end{itemize}
+\noindent štruktúrovaný tréningový dataset (1159 záznamov) určený pre SFT s dôrazom na konzistentnú štruktúru odpovede,\par
+\noindent preferenčný dataset (1126 záznamov) vo formáte \texttt{prompt/chosen/rejected} určený pre DPO.\par
  
 \section{Architektúra tréningového systému}
  
@@ -73,44 +69,36 @@ Každý model má vlastný \texttt{config.py}. Ten definuje všetky parametre po
 Konfiguračné súbory obsahujú nasledovné kategórie parametrov:
  
 \textbf{Zdroje a výstupy:}
-\begin{itemize}
-    \item \texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,
-    \item \texttt{DATASET\_PATH} — výber tréningového datasetu,
-    \item \texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.
-\end{itemize}
+\noindent\texttt{MODEL\_ID} — Hugging Face identifikátor základného modelu,\par
+\noindent\texttt{DATASET\_PATH} — výber tréningového datasetu,\par
+\noindent\texttt{OUTPUT\_DIR} — identifikátor výstupu tréningu.\par
  
 \textbf{Hyperparametre tréningu:}
-\begin{itemize}
-    \item \texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,
-    \item \texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,
-    \item \texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,
-    \item \texttt{LEARNING\_RATE} — miera učenia,
-    \item \texttt{MAX\_SEQ\_LENGTH} — maximálna dĺžka vstupnej sekvencie,
-    \item \texttt{TEST\_SIZE} — podiel validačných dát.
-\end{itemize}
+\noindent\texttt{NUM\_TRAIN\_EPOCHS} — počet epoch,\par
+\noindent\texttt{PER\_DEVICE\_TRAIN\_BATCH\_SIZE} — batch size na jedno GPU,\par
+\noindent\texttt{GRADIENT\_ACCUMULATION\_STEPS} — akumulácia gradientov,\par
+\noindent\texttt{LEARNING\_RATE} — miera učenia,\par
+\noindent\texttt{MAX\_SEQ\_LENGTH} — maximálna dĺžka vstupnej sekvencie,\par
+\noindent\texttt{TEST\_SIZE} — podiel validačných dát.\par
  
 \textbf{Systémový prompt:}
 Každý konfiguračný súbor obsahuje \texttt{SYSTEM\_PROMPT}. Ten definuje požadovanú štruktúru odpovede modelu. Prompt inštruuje model, aby vždy odpovedal v jasnej štruktúre. Táto obsahuje priamu odpoveď, kľúčové fakty s číselnými údajmi, hodnotenie úrovne rizika a mieru istoty (confidence). Takýto prístup zabezpečuje konzistentný výstup vhodný pre rozhodovacie procesy.
  
 \textbf{Kvantizačná konfigurácia:}
-\begin{itemize}
-    \item \texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,
-    \item \texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),
-    \item \texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),
-    \item \texttt{USE\_DOUBLE\_QUANT} — dvojitá kvantizácia (len pre Gemma-3).
-\end{itemize}
+\noindent\texttt{LOAD\_IN\_4BIT} — zapnutie 4-bitovej kvantizácie,\par
+\noindent\texttt{BNB\_QUANT\_TYPE} — typ kvantizácie (NF4 — Normal Float 4-bit),\par
+\noindent\texttt{COMPUTE\_DTYPE} — dátový typ pre výpočty (bfloat16),\par
+\noindent\texttt{USE\_DOUBLE\_QUANT} — dvojitá kvantizácia (len pre Gemma-3).\par
  
 Formát NF4 je kľúčovým riešením pre tréning miliardových modelov na spotrebiteľskom hardvéri. Bfloat16 bol zvolený ako compute dtype pre širokú hardvérovú podporu. Oproti float16 poskytuje lepšiu numerickú stabilitu.
  
 \textbf{LoRA konfigurácia:}
 Pre každý model je definovaný objekt \texttt{LORA\_CONFIG} z knižnice \texttt{peft}. Špecifikuje:
-\begin{itemize}
-    \item \texttt{r} — hodnosť LoRA matíc (rank),
-    \item \texttt{lora\_alpha} — škálovací faktor,
-    \item \texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,
-    \item \texttt{bias} — spracovanie bias parametrov,
-    \item \texttt{task\_type} — typ úlohy (\texttt{CAUSAL\_LM}).
-\end{itemize}
+\noindent\texttt{r} — hodnosť LoRA matíc (rank),\par
+\noindent\texttt{lora\_alpha} — škálovací faktor,\par
+\noindent\texttt{target\_modules} — zoznam modulov transformera, na ktoré sa aplikuje LoRA,\par
+\noindent\texttt{bias} — spracovanie bias parametrov,\par
+\noindent\texttt{task\_type} — typ úlohy (\texttt{CAUSAL\_LM}).\par
  
 Voľba target modulov sa líši medzi modelmi. Phi-3 používa \texttt{qkv\_proj} (zlúčená attention projekcia) a \texttt{gate\_up\_proj} (zlúčená MLP projekcia). Gemma-3 a Qwen3 používajú štandardné samostatné projekčné vrstvy (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}). Rozdiel vyplýva z odlišnej architektúry jednotlivých modelov.
  
@@ -185,30 +173,26 @@ SFT naučí model generovať odpovede v správnom formáte s doménovo relevantn
  
 DPO maximalizuje pravdepodobnosť preferovaných odpovedí voči referenčnému modelu. Používa logaritmickú loss funkciu závislú od parametra beta. Beta kontroluje silu regularizácie. Oproti RLHF je implementácia jednoduchšia. Nevyžaduje reward model ani PPO algoritmus.
  
-\subsection{Architektúra skriptu train\_dpo.py}
+\subsection{Architektúra DPO tréningového skriptu}
  
 Skript je navrhnutý ako command-line nástroj. Obsahuje vopred definované presety pre jednotlivé modely. Hlavné komponenty sú:
  
 \textbf{Model presety:} Slovník \texttt{MODEL\_PRESETS} obsahuje konfigurácie pre \texttt{phi3}, \texttt{gemma3} a \texttt{qwen3}. Každý preset špecifikuje:
-\begin{itemize}
-    \item \texttt{base\_model\_id} — identifikátor základného modelu,
-    \item \texttt{sft\_adapter\_path} — referencia na SFT adaptér ako východiskový bod,
-    \item \texttt{output\_dir} — označenie výstupu DPO adaptéra,
-    \item \texttt{compute\_dtype} — dátový typ (bfloat16),
-    \item \texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),
-    \item \texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,
-    \item \texttt{trust\_remote\_code} — povolenie spustenia vlastného kódu modelu.
-\end{itemize}
+\noindent\texttt{base\_model\_id} — identifikátor základného modelu,\par
+\noindent\texttt{sft\_adapter\_path} — referencia na SFT adaptér ako východiskový bod,\par
+\noindent\texttt{output\_dir} — označenie výstupu DPO adaptéra,\par
+\noindent\texttt{compute\_dtype} — dátový typ (bfloat16),\par
+\noindent\texttt{use\_double\_quant} — dvojitá kvantizácia (True len pre Gemma-3),\par
+\noindent\texttt{target\_modules} — moduly, na ktoré sa aplikuje LoRA,\par
+\noindent\texttt{trust\_remote\_code} — povolenie spustenia vlastného kódu modelu.\par
  
 \textbf{Argument parsing:} Skript akceptuje nasledovné parametre:
-\begin{itemize}
-    \item \texttt{--model} — výber presetu (povinný parameter),
-    \item \texttt{--dataset} — výber DPO datasetu,
-    \item \texttt{--beta} — DPO regularizačný parameter (default: 0.1),
-    \item \texttt{--epochs} — počet tréningových epoch (default: 1),
-    \item \texttt{--lr} — learning rate (default: 5e-5),
-    \item hyperparametre pre batch size, gradient accumulation, max length a ďalšie.
-\end{itemize}
+\noindent\texttt{--model} — výber presetu (povinný parameter),\par
+\noindent\texttt{--dataset} — výber DPO datasetu,\par
+\noindent\texttt{--beta} — DPO regularizačný parameter (default: 0.1),\par
+\noindent\texttt{--epochs} — počet tréningových epoch (default: 1),\par
+\noindent\texttt{--lr} — learning rate (default: 5e-5),\par
+\noindent hyperparametre pre batch size, gradient accumulation, max length a ďalšie.\par
  
 Hodnota \texttt{beta=0.1} poskytuje dostatočnú regularizáciu bez prílišného obmedzenia. Nízky learning rate \texttt{5e-5} zabraňuje destabilizácii SFT modelu. Jedna epocha je pre preferenčnú kalibráciu zvyčajne postačujúca.
  
@@ -339,10 +323,10 @@ Pre subjektívne metriky kvality sa používa externý LLM ako hodnotiteľ. Impl
     \item agreguje skóre naprieč vzorkami pomocou priemeru.
 \end{itemize}
 
-Konkrétne bol použitý Ollama model \texttt{Mistral-7B-v0.3} (tag \texttt{mistral:7b-v0.3}). Systémový prompt hodnotiteľa bol:
+Konkrétne bol použitý Ollama model \texttt{Mistral-7B-v0.3}. Systémový prompt hodnotiteľa bol:
 \begin{verbatim}
-You are an expert evaluator for an AI assistant that answers questions about energy markets,
-climate policy, and financial regulation.
+You are an expert evaluator for an AI assistant that answers questions 
+about energy markets, climate policy, and financial regulation.
 \end{verbatim}
 
 Hodnotenie prebiehalo tak, že Mistral dostal ako používateľský prompt otázku, odpoveď modelu a referenčnú odpoveď. Mal ohodnotiť štyri kritériá na škále 1--10, najprv si premyslieť hodnotenie a vrátiť výstup striktne vo formáte JSON. Štruktúra promptu bola:

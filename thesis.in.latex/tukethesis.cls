@@ -275,7 +275,25 @@
 }
 \newcommand{\thesisspec}[1]{
     \renewcommand{\@thesisspec}{
-        \includepdf[pages={-}]{#1}
+        \thispagestyle{empty}
+        \vglue0pt
+        \vbox to \textheight{%
+            \vskip -\topmargin
+            \vskip -\headheight
+            \vskip -\headsep
+            \vskip -1in
+            \noindent
+            \hskip -\oddsidemargin
+            \hskip -0.8in
+            \vbox to \paperheight{%
+                \vfil
+                \noindent\vbox{%
+                    \includegraphics[width=0.9\paperwidth,height=0.9\paperheight]{#1}%
+                }%
+                \vfil
+            }%
+        }%
+        \newpage
     }
 }
 
