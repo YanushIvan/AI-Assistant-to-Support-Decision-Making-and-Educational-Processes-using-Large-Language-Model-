@@ -155,10 +155,10 @@
    pdfhighlight={/P},
    colorlinks=true,
    %hidelinks, % disable color links completly
-   citecolor=magenta,
-   linkcolor=magenta,
-   filecolor=magenta,
-   urlcolor=magenta,
+    citecolor=black,
+    linkcolor=black,
+    filecolor=black,
+    urlcolor=black,
 %    baseurl={https://kpi.fei.tuke.sk/}
 ]{hyperref}
 
