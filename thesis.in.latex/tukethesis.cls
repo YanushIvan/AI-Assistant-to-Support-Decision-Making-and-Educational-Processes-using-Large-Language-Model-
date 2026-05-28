@@ -594,7 +594,7 @@
 
     \newpage
 
-    \vfill
+    \vspace*{\fill}
 
     \subsection*{\bibcitationname}
 
