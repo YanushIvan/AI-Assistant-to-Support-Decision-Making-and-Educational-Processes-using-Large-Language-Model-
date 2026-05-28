@@ -592,6 +592,8 @@
         \end{otherlanguage}
     }
 
+    \newpage
+
     \vfill
 
     \subsection*{\bibcitationname}
