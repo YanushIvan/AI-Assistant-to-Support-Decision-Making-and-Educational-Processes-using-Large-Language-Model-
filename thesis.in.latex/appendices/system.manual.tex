@@ -2,7 +2,7 @@
 
 \chapter{Systémová príručka}\label{app:system.manual}
 
-Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text je určený pre údržbu a ďalší vývoj.
+Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text je určený pre údržbu a ďalší vývoj. Cesty sú uvádzané relatívne k rootu repozitára.
 
 \section{Modul Energy Chat}
 
@@ -10,7 +10,7 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 
 \textbf{\path{energy_chat/main.py}} je hlavný vstup FastAPI aplikácie.
 \begin{description}
-	\item[\texttt{lifespan()}] Načítava model pri štarte a uvoľňuje zdroje pri ukončení.
+	\item[\texttt{lifespan()}] Načítava model pri štarte a uvoľňuje zdroje pri ukončení (idempotentne cez \texttt{ModelService}).
 	\item[\texttt{startup\_event()}] Spúšťa načítanie modelu ako záloha pri štarte.
 	\item[\texttt{shutdown\_event()}] Zaznamená vypnutie aplikácie do logu.
 	\item[\texttt{get\_models\_root()}] Vráti zoznam dostupných modelov na root endpoint.
@@ -18,10 +18,12 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 	\item[\texttt{health\_check()}] Vráti stav aplikácie a načítania modelu.
 \end{description}
 
+Modul mountuje statické súbory na \texttt{/static} (ak adresár existuje) a registruje \texttt{chat\_router} s prefixom \texttt{/api}. Spustenie \texttt{uvicorn.run()} používa \texttt{Settings.HOST}, \texttt{PORT}, \texttt{RELOAD} a \texttt{LOG\_LEVEL}.
+
 \textbf{\path{energy_chat/api/routes/chat.py}} obsahuje API routy.
 \begin{description}
 	\item[\texttt{get\_models()}] Vracia zoznam modelov z konfigurácie.
-	\item[\texttt{answer\_prompt()}] Spracuje požiadavku, skladá správy a volá generovanie.
+	\item[\texttt{answer\_prompt()}] Prepína model podľa \texttt{request.model}, skladá správy (so system promptom len pre adaptéry) a volá generovanie.
 	\item[\texttt{health\_check()}] Vracia stav služby a či je model načítaný.
 \end{description}
 
@@ -32,8 +34,12 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 \textbf{\path{energy_chat/core/config.py}} drží centrálne nastavenia.
 \begin{description}
 	\item[\texttt{Settings}] Uchováva konštanty a parametre aplikácie.
-	\item[\texttt{Settings.MODELS}] Skladá zoznam modelov a cesty k adapterom.
-	\item[\texttt{Settings.LORA\_ADAPTER\_PATH}] Vráti cestu k LoRA adapteru.
+	\item[\texttt{Settings.MODELS}] Skladá zoznam modelov a cesty k adapterom (relatívne k rootu repozitára).
+	\item[\texttt{Settings.LORA\_ADAPTER\_PATH}] Vráti predvolenú cestu k LoRA adapteru (legacy hodnota; runtime používa \texttt{MODELS}).
+	\item[\texttt{Settings.SYSTEM\_PROMPT}] Systémový prompt pre modely s adaptérom.
+	\item[\texttt{Settings.MAX\_NEW\_TOKENS}, \texttt{TEMPERATURE}, \texttt{TOP\_K}, \texttt{TOP\_P}] Generačné parametre.
+	\item[\texttt{Settings.COMPUTE\_DTYPE}] Typ výpočtu pre 4-bit QLoRA.
+	\item[\texttt{Settings.HOST}, \texttt{PORT}, \texttt{RELOAD}, \texttt{LOG\_LEVEL}] Nastavenia servera a logovania.
 	\item[\texttt{get\_settings()}] Vracia cachovanú inštanciu nastavení.
 \end{description}
 
@@ -50,12 +56,14 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 
 \textbf{\path{energy_chat/services/model_service.py}} riadi načítanie a generovanie.
 \begin{description}
-	\item[\texttt{ModelService.load\_models()}] Načíta model a tokenizer, prípadne adapter.
-	\item[\texttt{ModelService.generate\_response()}] Generuje odpoveď na základe správ.
+	\item[\texttt{ModelService.load\_models()}] Načíta base model v 4-bit režime, pridá a zlúči LoRA adapter (ak existuje) a nastaví aktuálny model.
+	\item[\texttt{ModelService.generate\_response()}] Generuje odpoveď z chat template, nastavuje stop tokeny podľa rodiny modelu a čistí špeciálne tokeny.
 	\item[\texttt{ModelService.is\_loaded}] Vracia stav načítania modelu.
 	\item[\texttt{ModelService.should\_use\_system\_prompt}] Rozhoduje o použití system promptu.
 	\item[\texttt{get\_model\_service()}] Vráti singleton služby.
 \end{description}
+
+\texttt{generate\_response()} vypína \texttt{enable\_thinking} pre Qwen3, odstraňuje \texttt{<think>...</think>} bloky a pre UI konvertuje \texttt{###} a \texttt{**...**} na HTML tagy.
 
 \textbf{\path{energy_chat/services/__init__.py}} re-exportuje službu bez ďalšej logiky.
 
@@ -68,12 +76,12 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 
 \textbf{\path{energy_chat/static/chat.js}} implementuje logiku UI.
 \begin{description}
-	\item[\texttt{loadModels()}] Načíta dostupné modely z API.
+	\item[\texttt{loadModels()}] Načíta dostupné modely (najprv \texttt{/models}, potom \texttt{/api/models}).
 	\item[\texttt{clearEmptyState()}] Odstráni prázdny stav z UI.
 	\item[\texttt{appendMessage()}] Pridá bublinu správy do chatu.
 	\item[\texttt{showTypingIndicator()}] Zobrazí indikátor písania.
 	\item[\texttt{removeTypingIndicator()}] Skryje indikátor písania.
-	\item[\texttt{sendMessage()}] Odošle požiadavku na API a uloží históriu.
+	\item[\texttt{sendMessage()}] Odošle požiadavku na API, posiela \texttt{history} a \texttt{model} a aktualizuje lokálnu históriu.
 \end{description}
 
 \section{Konfigurácie tréningu}
@@ -83,7 +91,7 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 \textbf{\path{training/shared/data_loader.py}} pripravuje dáta pre SFT tréning.
 \begin{description}
 	\item[\texttt{\_create\_masked\_labels()}] Maskuje system a user tokeny v labeloch.
-	\item[\texttt{load\_and\_prepare\_data()}] Načíta JSONL, tokenizuje a vytvorí split.
+	\item[\texttt{load\_and\_prepare\_data()}] Načíta JSONL s \texttt{prompt} a \texttt{completion}, tokenizuje a vytvorí train/test split.
 \end{description}
 
 \subsection{Konfiguračné súbory}
@@ -111,6 +119,12 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 \end{description}
 
 \section{Skripty}
+
+\subsection{Spúšťacie skripty}
+
+\textbf{\path{start_server.sh}} spustí API cez \texttt{energy\_chat/main.py} a preferuje \texttt{./venv/bin/python} ak existuje.
+
+\textbf{\path{run_eval.sh}} aktivuje \texttt{venv}, doinštaluje \texttt{anthropic} (ak chýba) a spustí \texttt{scripts/evaluate_models.py}. Pre G-Eval je potrebné nastaviť \texttt{ANTHROPIC\_API\_KEY}.
 
 \subsection{Vyhodnotenie modelov}
 
@@ -160,5 +174,5 @@ Táto príručka opisuje internú štruktúru systému a hlavné funkcie. Text j
 	\item[\texttt{build\_bnb\_config()}] Vytvorí QLoRA konfiguráciu.
 	\item[\texttt{load\_quantized\_base()}] Načíta kvantizovaný základný model.
 	\item[\texttt{merge\_sft\_adapter()}] Zlúči SFT adapter do base modelu.
-	\item[\texttt{main()}] Pripraví dáta, spustí DPO tréning a uloží adapter.
+	\item[\texttt{main()}] Pripraví dáta (\texttt{prompt/chosen/rejected}), spustí DPO tréning a uloží adapter; \texttt{--check-only} iba overí cesty.
 \end{description}

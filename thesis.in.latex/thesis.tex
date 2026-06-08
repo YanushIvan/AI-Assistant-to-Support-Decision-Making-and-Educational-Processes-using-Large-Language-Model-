@@ -45,6 +45,9 @@
 %% Title page, abstract, declaration etc.:
 \frontmatter{}
 
+% Avoid inserting blank pages when using \include: prefer \clearpage
+\let\cleardoublepage\clearpage
+
 %% List of thesis chapters in required order
 % \include{chapters/00-preface}
 \include{chapters/01-introduction}
@@ -58,7 +61,6 @@
 
 %% Bibliography, glossary, acronyms
 \glsaddall[types={\acronymtype}]
-\let\cleardoublepage\clearpage
 \backmatter{}
 
 
