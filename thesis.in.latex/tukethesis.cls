@@ -502,17 +502,19 @@
 %%
 %%%%%
 \newcommand{\backmatter}{
+    \let\cleardoublepage\clearpage
     %% The bibliography
-    {\let\cleardoublepage\clearpage
-    \printbibliography[heading=bibintoc]}
+    \printbibliography[heading=bibintoc]
 
     \label{theend} % the last page of the thesis
 
     % List of acronyms
-    \printglossary[type=\acronymtype,title={\acrlistname}]
+    {\let\cleardoublepage\clearpage
+    \printglossary[type=\acronymtype,title={\acrlistname}]}
 
     % Glossaries
-    \printglossary
+    {\let\cleardoublepage\clearpage
+    \printglossary}
 }
 
 
