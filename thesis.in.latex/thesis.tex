@@ -54,16 +54,11 @@
 \include{chapters/03-implementation}
 % ...
 \include{chapters/08-evaluation}
-\include{chapters/09-summary}
+\input{chapters/09-summary}
 
 %% Bibliography, glossary, acronyms
 \glsaddall[types={\acronymtype}]
 \let\cleardoublepage\clearpage
-\defbibheading{bibintoc}[\bibname]{%
-  \clearpage
-  \chapter*{#1}%
-  \addcontentsline{toc}{chapter}{#1}%
-}
 \backmatter{}
 
 
