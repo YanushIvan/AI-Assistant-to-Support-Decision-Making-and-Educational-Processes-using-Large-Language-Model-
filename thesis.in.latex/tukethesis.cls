@@ -503,7 +503,8 @@
 %%%%%
 \newcommand{\backmatter}{
     %% The bibliography
-    \printbibliography[heading=bibintoc]
+    {\let\cleardoublepage\clearpage
+    \printbibliography[heading=bibintoc]}
 
     \label{theend} % the last page of the thesis
 
