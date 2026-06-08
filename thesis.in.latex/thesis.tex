@@ -45,9 +45,6 @@
 %% Title page, abstract, declaration etc.:
 \frontmatter{}
 
-% Avoid inserting blank pages when using \include: prefer \clearpage
-\let\cleardoublepage\clearpage
-
 %% List of thesis chapters in required order
 % \include{chapters/00-preface}
 \include{chapters/01-introduction}
@@ -61,7 +58,12 @@
 
 %% Bibliography, glossary, acronyms
 \glsaddall[types={\acronymtype}]
-\clearpage
+\let\cleardoublepage\clearpage
+\defbibheading{bibintoc}[\bibname]{%
+  \clearpage
+  \chapter*{#1}%
+  \addcontentsline{toc}{chapter}{#1}%
+}
 \backmatter{}
 
 
@@ -76,7 +78,7 @@
 
 \ifincludeappendices
 {%
-
+\let\cleardoublepage\clearpage
 \input{appendices/00-list}
 }
 
@@ -99,7 +101,8 @@
 \makeatother
 
 
-
+\include{appendices/user.manual}
+\include{appendices/system.manual}
 
 
 % avoid empty lof, lot and lol
